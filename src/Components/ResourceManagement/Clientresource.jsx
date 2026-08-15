@@ -73,7 +73,7 @@ function Clientresource() {
      HELPER - QUALITY DESCRIPTION
   ============================================================ */
 
-  const getQualityDescription = (quality) => {
+  const getQualityDescription = useCallback((quality) => {
     if (!quality) return "";
 
     return String(
@@ -86,75 +86,78 @@ function Clientresource() {
         quality.quality ??
         ""
     ).trim();
-  };
+  }, []);
 
   /* ============================================================
      HELPER - FORMAT CLIENT
   ============================================================ */
 
-  const formatClient = (
-    resource,
-    customer = null,
-    company = null,
-    quality = null
-  ) => {
-    return {
-      id: resource.id,
+  const formatClient = useCallback(
+    (
+      resource,
+      customer = null,
+      company = null,
+      quality = null
+    ) => {
+      return {
+        id: resource.id,
 
-      customerResourceId:
-        resource.customer_id ?? "",
+        customerResourceId:
+          resource.customer_id ?? "",
 
-      customerId:
-        customer?.customer_id ??
-        resource.customer_id ??
-        "",
+        customerId:
+          customer?.customer_id ??
+          resource.customer_id ??
+          "",
 
-      company:
-        company?.company_name ??
-        "",
+        company:
+          company?.company_name ??
+          "",
 
-      accountManager:
-        company?.account_manager ??
-        "",
+        accountManager:
+          company?.account_manager ??
+          "",
 
-      country:
-        company?.country ??
-        "",
+        country:
+          company?.country ??
+          "",
 
-      sellingRate:
-        resource.selling_rate ?? "",
+        sellingRate:
+          resource.selling_rate ?? "",
 
-      ports:
-        resource.ports ?? "",
+        ports:
+          resource.ports ?? "",
 
-      credit:
-        resource.credit ?? "",
+        credit:
+          resource.credit ?? "",
 
-      supportQuality:
-        resource.support_quality ?? "",
+        supportQuality:
+          resource.support_quality ?? "",
 
-      qualityDescriptionId:
-        resource.quality_description_id ?? "",
+        qualityDescriptionId:
+          resource.quality_description_id ?? "",
 
-      qualityDescription:
-        getQualityDescription(quality),
+        qualityDescription:
+          getQualityDescription(quality),
 
-      routeType:
-        resource.route_type ?? "",
+        routeType:
+          resource.route_type ?? "",
 
-      billingCycle:
-        resource.billing_cycle ?? "",
+        billingCycle:
+          resource.billing_cycle ?? "",
 
-      status:
-        resource.status ?? "",
+        status:
+          resource.status ?? "",
 
-      createdAt:
-        resource.created_at ?? "",
+        createdAt:
+          resource.created_at ?? "",
 
-      updatedAt:
-        resource.updated_at ?? "",
-    };
-  };
+        updatedAt:
+          resource.updated_at ?? "",
+      };
+    },
+    [getQualityDescription]
+  );
 
   /* ============================================================
      FETCH QUALITY DESCRIPTIONS
@@ -359,7 +362,7 @@ function Clientresource() {
     } finally {
       setLoading(false);
     }
-  }, [fetchQualityDescriptions]);
+  }, [fetchQualityDescriptions, formatClient]);
 
   /* ============================================================
      INITIAL FETCH
