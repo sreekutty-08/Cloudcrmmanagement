@@ -1,4 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../supabaseClient";
 
@@ -30,30 +35,29 @@ function Leads() {
   const [sourceFilter, setSourceFilter] = useState("");
 
   // =========================================================
-  // FETCH ACTUAL SUPABASE DATA
+  // FETCH DATA FROM NEW SUPABASE DATABASE
   // =========================================================
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     setError("");
 
     try {
-      const [leadResult, companyResult] =
-        await Promise.all([
-          supabase
-            .from(LEADS_TABLE)
-            .select("*")
-            .order("created_at", {
-              ascending: false,
-            }),
+      const [leadResult, companyResult] = await Promise.all([
+        supabase
+          .from(LEADS_TABLE)
+          .select("*")
+          .order("created_at", {
+            ascending: false,
+          }),
 
-          supabase
-            .from(COMPANIES_TABLE)
-            .select("*")
-            .order("created_at", {
-              ascending: false,
-            }),
-        ]);
+        supabase
+          .from(COMPANIES_TABLE)
+          .select("*")
+          .order("created_at", {
+            ascending: false,
+          }),
+      ]);
 
       if (leadResult.error) {
         throw new Error(
@@ -67,35 +71,21 @@ function Leads() {
         );
       }
 
-      const realLeads = Array.isArray(
-        leadResult.data
-      )
+      const realLeads = Array.isArray(leadResult.data)
         ? leadResult.data
         : [];
 
-      const realCompanies = Array.isArray(
-        companyResult.data
-      )
+      const realCompanies = Array.isArray(companyResult.data)
         ? companyResult.data
         : [];
 
-      console.log(
-        "REAL SUPABASE LEADS:",
-        realLeads
-      );
-
-      console.log(
-        "REAL SUPABASE COMPANIES:",
-        realCompanies
-      );
+      console.log("NEW DATABASE - LEADS:", realLeads);
+      console.log("NEW DATABASE - COMPANIES:", realCompanies);
 
       setLeads(realLeads);
       setCompanies(realCompanies);
     } catch (err) {
-      console.error(
-        "Supabase fetch error:",
-        err
-      );
+      console.error("Supabase fetch error:", err);
 
       setError(
         err?.message ||
@@ -107,14 +97,18 @@ function Leads() {
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    fetchData();
   }, []);
 
   // =========================================================
-  // COMPANY LOOKUP
+  // INITIAL FETCH
+  // =========================================================
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // =========================================================
+  // COMPANY MAP
   // =========================================================
 
   const companyMap = useMemo(() => {
@@ -132,22 +126,8 @@ function Leads() {
     return map;
   }, [companies]);
 
-  const getCompany = (lead) => {
-    if (
-      lead?.company_id === null ||
-      lead?.company_id === undefined
-    ) {
-      return null;
-    }
-
-    return (
-      companyMap[String(lead.company_id)] ||
-      null
-    );
-  };
-
   // =========================================================
-  // REAL FILTER OPTIONS FROM DATABASE
+  // FILTER OPTIONS
   // =========================================================
 
   const statusOptions = useMemo(() => {
@@ -163,9 +143,7 @@ function Leads() {
           )
           .map((value) => String(value))
       ),
-    ].sort((a, b) =>
-      a.localeCompare(b)
-    );
+    ].sort((a, b) => a.localeCompare(b));
   }, [leads]);
 
   const typeOptions = useMemo(() => {
@@ -181,9 +159,7 @@ function Leads() {
           )
           .map((value) => String(value))
       ),
-    ].sort((a, b) =>
-      a.localeCompare(b)
-    );
+    ].sort((a, b) => a.localeCompare(b));
   }, [leads]);
 
   const sourceOptions = useMemo(() => {
@@ -199,9 +175,7 @@ function Leads() {
           )
           .map((value) => String(value))
       ),
-    ].sort((a, b) =>
-      a.localeCompare(b)
-    );
+    ].sort((a, b) => a.localeCompare(b));
   }, [leads]);
 
   // =========================================================
@@ -209,15 +183,14 @@ function Leads() {
   // =========================================================
 
   const filteredLeads = useMemo(() => {
-    const searchValue = search
-      .trim()
-      .toLowerCase();
+    const searchValue = search.trim().toLowerCase();
 
     return leads.filter((lead) => {
-      const company = getCompany(lead);
+      const company =
+        companyMap[String(lead?.company_id)] || null;
 
       const searchableValues = [
-        // LEADS TABLE
+        // LEADS
         lead?.id,
         lead?.company_id,
         lead?.lead_id,
@@ -227,7 +200,7 @@ function Leads() {
         lead?.created_at,
         lead?.updated_at,
 
-        // COMPANIES TABLE
+        // COMPANIES
         company?.id,
         company?.company_id,
         company?.company_name,
@@ -252,20 +225,17 @@ function Leads() {
 
       const matchesStatus =
         !statusFilter ||
-        String(lead?.status ?? "")
-          .toLowerCase() ===
+        String(lead?.status ?? "").toLowerCase() ===
           statusFilter.toLowerCase();
 
       const matchesType =
         !typeFilter ||
-        String(lead?.company_type ?? "")
-          .toLowerCase() ===
+        String(lead?.company_type ?? "").toLowerCase() ===
           typeFilter.toLowerCase();
 
       const matchesSource =
         !sourceFilter ||
-        String(lead?.lead_source ?? "")
-          .toLowerCase() ===
+        String(lead?.lead_source ?? "").toLowerCase() ===
           sourceFilter.toLowerCase();
 
       return (
@@ -277,12 +247,11 @@ function Leads() {
     });
   }, [
     leads,
-    companies,
+    companyMap,
     search,
     statusFilter,
     typeFilter,
     sourceFilter,
-    companyMap,
   ]);
 
   // =========================================================
@@ -293,27 +262,26 @@ function Leads() {
 
   const activeCount = leads.filter(
     (lead) =>
-      String(lead?.status ?? "")
-        .toUpperCase() === "ACTIVE"
+      String(lead?.status ?? "").toUpperCase() ===
+      "ACTIVE"
   ).length;
 
   const pendingCount = leads.filter(
     (lead) =>
-      String(lead?.status ?? "")
-        .toUpperCase() === "PENDING"
+      String(lead?.status ?? "").toUpperCase() ===
+      "PENDING"
   ).length;
 
-  const convertedCount = leads.filter(
-    (lead) =>
-      ["CUSTOMER", "VENDOR"].includes(
-        String(
-          lead?.company_type ?? ""
-        ).toUpperCase()
-      )
+  const convertedCount = leads.filter((lead) =>
+    ["CUSTOMER", "VENDOR"].includes(
+      String(
+        lead?.company_type ?? ""
+      ).toUpperCase()
+    )
   ).length;
 
   // =========================================================
-  // RESET
+  // RESET FORM
   // =========================================================
 
   const resetForm = () => {
@@ -323,12 +291,20 @@ function Leads() {
     setLeadSource("");
   };
 
+  // =========================================================
+  // OPEN MODAL
+  // =========================================================
+
   const openAddModal = () => {
     resetForm();
     setError("");
     setSuccess("");
     setShowModal(true);
   };
+
+  // =========================================================
+  // CLOSE MODAL
+  // =========================================================
 
   const closeModal = () => {
     if (saving) return;
@@ -339,7 +315,7 @@ function Leads() {
   };
 
   // =========================================================
-  // COMPANY ID
+  // GENERATE COMPANY ID
   // =========================================================
 
   const generateCompanyId = (name) => {
@@ -424,8 +400,6 @@ function Leads() {
 
       // -------------------------------------------------------
       // CREATE COMPANY
-      //
-      // ONLY REAL COMPANIES COLUMNS
       // -------------------------------------------------------
 
       const companyPayload = {
@@ -461,14 +435,12 @@ function Leads() {
       newCompany = companyData;
 
       console.log(
-        "REAL CREATED COMPANY:",
+        "NEW DATABASE - CREATED COMPANY:",
         newCompany
       );
 
       // -------------------------------------------------------
       // CREATE LEAD
-      //
-      // company_type EXISTS HERE
       // -------------------------------------------------------
 
       const leadPayload = {
@@ -481,9 +453,11 @@ function Leads() {
         lead_source:
           sourceValue || null,
 
-        company_type: "LEAD",
+        company_type:
+          "LEAD",
 
-        status: "ACTIVE",
+        status:
+          "ACTIVE",
       };
 
       const {
@@ -496,7 +470,7 @@ function Leads() {
         .single();
 
       if (leadError) {
-        // Roll back company
+        // Rollback company
         await supabase
           .from(COMPANIES_TABLE)
           .delete()
@@ -511,7 +485,7 @@ function Leads() {
       }
 
       console.log(
-        "REAL CREATED LEAD:",
+        "NEW DATABASE - CREATED LEAD:",
         newLead
       );
 
@@ -539,95 +513,6 @@ function Leads() {
   };
 
   // =========================================================
-  // DELETE
-  // =========================================================
-
-  const handleDelete = async (lead) => {
-    const confirmed =
-      window.confirm(
-        `Delete lead "${
-          lead?.lead_id || lead?.id
-        }"?`
-      );
-
-    if (!confirmed) return;
-
-    setError("");
-
-    try {
-      const companyId =
-        lead?.company_id;
-
-      const {
-        error: leadDeleteError,
-      } = await supabase
-        .from(LEADS_TABLE)
-        .delete()
-        .eq("id", lead.id);
-
-      if (leadDeleteError) {
-        throw leadDeleteError;
-      }
-
-      if (
-        companyId !== null &&
-        companyId !== undefined
-      ) {
-        const {
-          data: otherLeads,
-          error: otherLeadError,
-        } = await supabase
-          .from(LEADS_TABLE)
-          .select("id")
-          .eq(
-            "company_id",
-            companyId
-          )
-          .limit(1);
-
-        if (otherLeadError) {
-          console.error(
-            "Company reference check failed:",
-            otherLeadError
-          );
-        } else if (
-          !otherLeads ||
-          otherLeads.length === 0
-        ) {
-          const {
-            error: companyDeleteError,
-          } = await supabase
-            .from(COMPANIES_TABLE)
-            .delete()
-            .eq(
-              "id",
-              companyId
-            );
-
-          if (companyDeleteError) {
-            console.error(
-              "Company delete error:",
-              companyDeleteError
-            );
-          }
-        }
-      }
-
-      await fetchData();
-    } catch (err) {
-      console.error(
-        "Delete lead error:",
-        err
-      );
-
-      setError(
-        err?.message ||
-          "Unable to delete lead."
-      );
-    }
-  };
-
-  // =========================================================
   // OPEN DETAILS
   // =========================================================
 
@@ -642,13 +527,12 @@ function Leads() {
   };
 
   // =========================================================
-  // STYLES
+  // STATUS STYLE
   // =========================================================
 
   const getStatusStyle = (status) => {
     switch (
-      String(status || "")
-        .toUpperCase()
+      String(status || "").toUpperCase()
     ) {
       case "ACTIVE":
         return "bg-green-50 text-green-700 border-green-200";
@@ -670,10 +554,13 @@ function Leads() {
     }
   };
 
+  // =========================================================
+  // TYPE STYLE
+  // =========================================================
+
   const getTypeStyle = (type) => {
     switch (
-      String(type || "")
-        .toUpperCase()
+      String(type || "").toUpperCase()
     ) {
       case "CUSTOMER":
         return "bg-green-50 text-green-700 border-green-200";
@@ -696,7 +583,12 @@ function Leads() {
   return (
     <div className="min-h-screen bg-[#f5f6f8]">
 
+      {/* =====================================================
+          TOP HEADER
+      ===================================================== */}
+
       <header className="h-16 bg-white border-b border-gray-300 flex items-center px-6">
+
         <button
           type="button"
           onClick={() =>
@@ -708,6 +600,7 @@ function Leads() {
         </button>
 
         <div className="ml-4">
+
           <h1 className="text-base font-semibold text-gray-900">
             CloudCRM
           </h1>
@@ -715,8 +608,14 @@ function Leads() {
           <p className="text-xs text-gray-500">
             Lead Management
           </p>
+
         </div>
+
       </header>
+
+      {/* =====================================================
+          MAIN
+      ===================================================== */}
 
       <main className="p-6">
 
@@ -725,6 +624,7 @@ function Leads() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
 
           <div>
+
             <h1 className="text-2xl font-bold text-gray-900">
               Leads
             </h1>
@@ -732,6 +632,7 @@ function Leads() {
             <p className="text-sm text-gray-500 mt-1">
               Manage actual lead records from Supabase.
             </p>
+
           </div>
 
           <button
@@ -758,7 +659,9 @@ function Leads() {
           </div>
         )}
 
-        {/* SUMMARY */}
+        {/* =================================================
+            SUMMARY
+        ================================================= */}
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
 
@@ -784,7 +687,9 @@ function Leads() {
 
         </div>
 
-        {/* FILTERS */}
+        {/* =================================================
+            FILTERS
+        ================================================= */}
 
         <div className="bg-white border border-gray-300 rounded-md mb-4 p-3">
 
@@ -794,7 +699,9 @@ function Leads() {
               type="text"
               value={search}
               onChange={(e) =>
-                setSearch(e.target.value)
+                setSearch(
+                  e.target.value
+                )
               }
               placeholder="Search database..."
               className="h-10 px-3 border border-gray-300 rounded-md text-sm outline-none focus:border-black"
@@ -809,6 +716,7 @@ function Leads() {
               }
               className="h-10 px-3 border border-gray-300 rounded-md bg-white text-sm"
             >
+
               <option value="">
                 All Status
               </option>
@@ -823,6 +731,7 @@ function Leads() {
                   </option>
                 )
               )}
+
             </select>
 
             <select
@@ -834,6 +743,7 @@ function Leads() {
               }
               className="h-10 px-3 border border-gray-300 rounded-md bg-white text-sm"
             >
+
               <option value="">
                 All Types
               </option>
@@ -848,6 +758,7 @@ function Leads() {
                   </option>
                 )
               )}
+
             </select>
 
             <select
@@ -859,6 +770,7 @@ function Leads() {
               }
               className="h-10 px-3 border border-gray-300 rounded-md bg-white text-sm"
             >
+
               <option value="">
                 All Sources
               </option>
@@ -873,13 +785,16 @@ function Leads() {
                   </option>
                 )
               )}
+
             </select>
 
           </div>
 
         </div>
 
-        {/* TABLE */}
+        {/* =================================================
+            TABLE
+        ================================================= */}
 
         <div className="bg-white border border-gray-300 rounded-md overflow-hidden">
 
@@ -888,6 +803,7 @@ function Leads() {
             <table className="w-full border-collapse">
 
               <thead>
+
                 <tr className="bg-[#f1f3f5] border-b-2 border-gray-400">
 
                   <th className="border-r border-gray-300 px-4 py-3 text-left text-xs font-bold uppercase text-gray-700">
@@ -919,28 +835,37 @@ function Leads() {
                   </th>
 
                 </tr>
+
               </thead>
 
               <tbody>
 
+                {/* LOADING */}
+
                 {loading && (
                   <tr>
+
                     <td
                       colSpan="7"
                       className="px-4 py-12 text-center text-sm text-gray-500"
                     >
                       Loading actual Supabase data...
                     </td>
+
                   </tr>
                 )}
+
+                {/* EMPTY */}
 
                 {!loading &&
                   filteredLeads.length === 0 && (
                     <tr>
+
                       <td
                         colSpan="7"
                         className="px-4 py-12 text-center"
                       >
+
                         <p className="text-sm font-medium text-gray-700">
                           No leads found
                         </p>
@@ -950,15 +875,24 @@ function Leads() {
                             ? "No lead records were returned by Supabase."
                             : "No records match the selected filters."}
                         </p>
+
                       </td>
+
                     </tr>
                   )}
+
+                {/* DATA */}
 
                 {!loading &&
                   filteredLeads.map(
                     (lead, index) => {
+
                       const company =
-                        getCompany(lead);
+                        companyMap[
+                          String(
+                            lead?.company_id
+                          )
+                        ] || null;
 
                       const type =
                         lead?.company_type ||
@@ -978,6 +912,8 @@ function Leads() {
                           } hover:bg-blue-50`}
                         >
 
+                          {/* LEAD ID */}
+
                           <td className="border-r border-gray-300 px-4 py-3">
 
                             <p className="font-semibold text-sm text-gray-900">
@@ -991,6 +927,8 @@ function Leads() {
                             </p>
 
                           </td>
+
+                          {/* COMPANY */}
 
                           <td className="border-r border-gray-300 px-4 py-3">
 
@@ -1006,10 +944,16 @@ function Leads() {
 
                           </td>
 
+                          {/* ACCOUNT MANAGER */}
+
                           <td className="border-r border-gray-300 px-4 py-3 text-sm text-gray-700">
+
                             {company?.account_manager ||
                               "—"}
+
                           </td>
+
+                          {/* TYPE */}
 
                           <td className="border-r border-gray-300 px-4 py-3">
 
@@ -1023,10 +967,16 @@ function Leads() {
 
                           </td>
 
+                          {/* SOURCE */}
+
                           <td className="border-r border-gray-300 px-4 py-3 text-sm text-gray-700">
+
                             {lead?.lead_source ||
                               "—"}
+
                           </td>
+
+                          {/* STATUS */}
 
                           <td className="border-r border-gray-300 px-4 py-3">
 
@@ -1039,6 +989,8 @@ function Leads() {
                             </span>
 
                           </td>
+
+                          {/* OPEN */}
 
                           <td className="px-4 py-3 text-center">
 
@@ -1073,16 +1025,19 @@ function Leads() {
 
       {/* =====================================================
           ADD LEAD MODAL
-          ===================================================== */}
+      ===================================================== */}
 
       {showModal && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
 
           <div className="bg-white w-full max-w-xl rounded-lg shadow-2xl">
 
+            {/* MODAL HEADER */}
+
             <div className="border-b border-gray-300 px-6 py-4 flex items-center justify-between">
 
               <div>
+
                 <h2 className="text-lg font-bold text-gray-900">
                   Add New Lead
                 </h2>
@@ -1090,6 +1045,7 @@ function Leads() {
                 <p className="text-xs text-gray-500 mt-1">
                   Creates a company and lead record directly in Supabase.
                 </p>
+
               </div>
 
               <button
@@ -1102,6 +1058,8 @@ function Leads() {
               </button>
 
             </div>
+
+            {/* FORM */}
 
             <form
               onSubmit={handleAddLead}
