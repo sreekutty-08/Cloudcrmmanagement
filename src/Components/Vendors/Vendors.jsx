@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../supabaseClient";
 
@@ -43,24 +43,27 @@ function Vendors() {
   // ERROR HANDLER
   // ============================================================
 
-  const showSupabaseError = (error, fallbackMessage) => {
-    console.error("Supabase Error:", error);
+  const showSupabaseError = useCallback(
+    (error, fallbackMessage) => {
+      console.error("Supabase Error:", error);
 
-    setLoadError({
-      message: error?.message || fallbackMessage,
-      details: error?.details || "",
-      hint: error?.hint || "",
-      code: error?.code || "",
-    });
+      setLoadError({
+        message: error?.message || fallbackMessage,
+        details: error?.details || "",
+        hint: error?.hint || "",
+        code: error?.code || "",
+      });
 
-    setShowErrorModal(true);
-  };
+      setShowErrorModal(true);
+    },
+    []
+  );
 
   // ============================================================
   // FETCH VENDORS
   // ============================================================
 
-  const fetchVendors = async () => {
+  const fetchVendors = useCallback(async () => {
     setLoading(true);
 
     try {
@@ -111,39 +114,41 @@ function Vendors() {
       // 4. COMBINE DATA
       // ========================================================
 
-      const combinedVendors = (vendorData || []).map((vendor) => {
-        const company =
-          companiesMap[String(vendor.company_id)] || {};
+      const combinedVendors = (vendorData || []).map(
+        (vendor) => {
+          const company =
+            companiesMap[String(vendor.company_id)] || {};
 
-        return {
-          ...vendor,
+          return {
+            ...vendor,
 
-          company,
+            company,
 
-          company_name:
-            company.company_name || "",
+            company_name:
+              company.company_name || "",
 
-          account_manager:
-            company.account_manager || "",
+            account_manager:
+              company.account_manager || "",
 
-          country:
-            company.country || "",
+            country:
+              company.country || "",
 
-          contact_person:
-            company.contact_person || "",
+            contact_person:
+              company.contact_person || "",
 
-          phone:
-            company.phone || "",
+            phone:
+              company.phone || "",
 
-          email:
-            company.email || "",
+            email:
+              company.email || "",
 
-          // IMPORTANT:
-          // IP ADDRESS COMES FROM vendors.ip_addresses
-          ip_addresses:
-            vendor.ip_addresses || [],
-        };
-      });
+            // IMPORTANT:
+            // IP ADDRESS COMES FROM vendors.ip_addresses
+            ip_addresses:
+              vendor.ip_addresses || [],
+          };
+        }
+      );
 
       setVendors(combinedVendors);
     } catch (error) {
@@ -156,7 +161,7 @@ function Vendors() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showSupabaseError]);
 
   // ============================================================
   // INITIAL LOAD
@@ -164,7 +169,7 @@ function Vendors() {
 
   useEffect(() => {
     fetchVendors();
-  }, []);
+  }, [fetchVendors]);
 
   // ============================================================
   // HANDLE FORM CHANGE

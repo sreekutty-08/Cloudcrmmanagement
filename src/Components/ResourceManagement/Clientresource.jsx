@@ -1,23 +1,11 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../../supabaseClient";
-
-/*
-|--------------------------------------------------------------------------
-| NEW DATABASE TABLES
-|--------------------------------------------------------------------------
-| client_resources.customer_id -> customers.id
-| customers.company_id         -> companies.id
-| client_resources.quality_description_id -> quality_descriptions.id
-|
-| IMPORTANT:
-| This code DOES NOT use the old:
-| - customervendordetails
-| - clients
-|
-| It uses only the new database structure.
-|--------------------------------------------------------------------------
-*/
 
 const CLIENT_RESOURCE_TABLE = "client_resources";
 const CUSTOMER_TABLE = "customers";
@@ -113,16 +101,9 @@ function Clientresource() {
     return {
       id: resource.id,
 
-      /*
-       * customer_id in client_resources is the BIGINT
-       * customers.id.
-       */
       customerResourceId:
         resource.customer_id ?? "",
 
-      /*
-       * Actual visible Customer ID comes from customers.customer_id.
-       */
       customerId:
         customer?.customer_id ??
         resource.customer_id ??
@@ -148,10 +129,6 @@ function Clientresource() {
 
       credit:
         resource.credit ?? "",
-
-      /*
-       * credit_currency intentionally NOT displayed.
-       */
 
       supportQuality:
         resource.support_quality ?? "",
@@ -183,7 +160,7 @@ function Clientresource() {
      FETCH QUALITY DESCRIPTIONS
   ============================================================ */
 
-  const fetchQualityDescriptions = async () => {
+  const fetchQualityDescriptions = useCallback(async () => {
     const { data, error: qualityError } = await supabase
       .from(QUALITY_TABLE)
       .select("*")
@@ -196,20 +173,20 @@ function Clientresource() {
     setQualityDescriptionsData(data || []);
 
     return data || [];
-  };
+  }, []);
 
   /* ============================================================
      FETCH CLIENT RESOURCES
   ============================================================ */
 
-  const fetchClients = async () => {
+  const fetchClients = useCallback(async () => {
     setLoading(true);
     setError("");
 
     try {
       /*
        * STEP 1
-       * Fetch resources from NEW client_resources table.
+       * Fetch resources from client_resources table.
        */
       const {
         data: resourceData,
@@ -239,10 +216,6 @@ function Clientresource() {
           qualityError
         );
 
-        /*
-         * Do not stop the entire page if quality descriptions
-         * are unavailable.
-         */
         qualities = [];
         setQualityDescriptionsData([]);
       }
@@ -272,7 +245,9 @@ function Clientresource() {
           error: customerError,
         } = await supabase
           .from(CUSTOMER_TABLE)
-          .select("id, customer_id, company_id, status")
+          .select(
+            "id, customer_id, company_id, status"
+          )
           .in("id", customerIds);
 
         if (customerError) {
@@ -323,7 +298,6 @@ function Clientresource() {
        * STEP 5
        * Create lookup maps.
        */
-
       const customerMap = new Map();
 
       customers.forEach((customer) => {
@@ -385,7 +359,7 @@ function Clientresource() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [fetchQualityDescriptions]);
 
   /* ============================================================
      INITIAL FETCH
@@ -393,7 +367,7 @@ function Clientresource() {
 
   useEffect(() => {
     fetchClients();
-  }, []);
+  }, [fetchClients]);
 
   /* ============================================================
      FETCH COMPANY FOR CUSTOMER
@@ -449,18 +423,14 @@ function Clientresource() {
     setError("");
 
     try {
-      /*
-       * IMPORTANT:
-       * Search NEW customers.customer_id.
-       *
-       * Do NOT search customervendordetails.
-       */
       const {
         data: customer,
         error: customerError,
       } = await supabase
         .from(CUSTOMER_TABLE)
-        .select("id, customer_id, company_id, status")
+        .select(
+          "id, customer_id, company_id, status"
+        )
         .eq("customer_id", value)
         .maybeSingle();
 
@@ -495,11 +465,14 @@ function Clientresource() {
 
       setSelectedCustomer(customerWithCompany);
       setCustomerSuggestions([]);
-      setCustomerSearch(customer.customer_id || value);
+      setCustomerSearch(
+        customer.customer_id || value
+      );
 
       setNewClient((previous) => ({
         ...previous,
-        customerId: customer.customer_id || value,
+        customerId:
+          customer.customer_id || value,
       }));
 
       return customerWithCompany;
@@ -541,15 +514,14 @@ function Clientresource() {
       setCustomerLookupLoading(true);
 
       try {
-        /*
-         * NEW customers table.
-         */
         const {
           data,
           error: lookupError,
         } = await supabase
           .from(CUSTOMER_TABLE)
-          .select("id, customer_id, company_id, status")
+          .select(
+            "id, customer_id, company_id, status"
+          )
           .ilike("customer_id", `%${value}%`)
           .limit(10);
 
@@ -568,6 +540,7 @@ function Clientresource() {
 
         if (!cancelled) {
           setCustomerSuggestions([]);
+
           setError(
             err?.message ||
               "Unable to search Customer ID."
@@ -721,7 +694,9 @@ function Clientresource() {
       ...new Set(
         clients
           .map((client) =>
-            String(client.routeType || "").trim()
+            String(
+              client.routeType || ""
+            ).trim()
           )
           .filter(Boolean)
       ),
@@ -848,7 +823,6 @@ function Clientresource() {
 
   /* ============================================================
      FORMAT CREDIT
-     NO CURRENCY FIELD
   ============================================================ */
 
   const formatCredit = (credit) => {
@@ -875,10 +849,6 @@ function Clientresource() {
 
     let customer = selectedCustomer;
 
-    /*
-     * If the user typed the ID but didn't select suggestion,
-     * fetch it directly from NEW customers table.
-     */
     if (
       !customer ||
       String(customer.customer_id || "").trim() !==
@@ -893,14 +863,6 @@ function Clientresource() {
       return;
     }
 
-    /*
-     * IMPORTANT:
-     *
-     * client_resources.customer_id is BIGINT.
-     *
-     * Therefore insert customers.id,
-     * NOT customers.customer_id text.
-     */
     const customerDatabaseId = Number(
       customer.id
     );
@@ -982,18 +944,6 @@ function Clientresource() {
       return;
     }
 
-    /*
-     * NEW DATABASE PAYLOAD
-     *
-     * No:
-     * - company
-     * - account_manager
-     * - country
-     * - credit_currency
-     * - quality_group
-     *
-     * Those old columns are NOT used here.
-     */
     const payload = {
       customer_id: customerDatabaseId,
 
@@ -1030,9 +980,6 @@ function Clientresource() {
         throw insertError;
       }
 
-      /*
-       * Build the displayed object immediately.
-       */
       const company =
         customer.company || null;
 
@@ -1201,9 +1148,6 @@ function Clientresource() {
       } = await supabase
         .from(CLIENT_RESOURCE_TABLE)
         .update({
-          /*
-           * customerResourceId is customers.id.
-           */
           customer_id:
             editingClient.customerResourceId,
 
@@ -1237,10 +1181,6 @@ function Clientresource() {
         throw updateError;
       }
 
-      /*
-       * Find customer/company again so the display
-       * stays based on NEW tables.
-       */
       let customer = null;
       let company = null;
 
@@ -1671,10 +1611,6 @@ function Clientresource() {
 
                       <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
                         <div className="w-full overflow-x-auto">
-                          {/* ==================================================
-                              BALANCED TABLE
-                          ================================================== */}
-
                           <table className="w-full table-fixed border-collapse">
                             <colgroup>
                               <col className="w-[28%]" />
@@ -1736,38 +1672,32 @@ function Clientresource() {
                                       }
                                       className="border-b border-gray-100 last:border-b-0 hover:bg-gray-50"
                                     >
-                                      {/* CUSTOMER ID */}
                                       <td className="px-4 py-3 text-sm font-medium truncate">
                                         {client.customerId ||
                                           "-"}
                                       </td>
 
-                                      {/* SELLING RATE */}
                                       <td className="px-4 py-3 text-sm">
                                         {client.sellingRate ??
                                           "-"}
                                       </td>
 
-                                      {/* PORTS */}
                                       <td className="px-4 py-3 text-sm">
                                         {client.ports ??
                                           "-"}
                                       </td>
 
-                                      {/* CREDIT */}
                                       <td className="px-4 py-3 text-sm">
                                         {formatCredit(
                                           client.credit
                                         )}
                                       </td>
 
-                                      {/* SUPPORT */}
                                       <td className="px-4 py-3 text-sm">
                                         {client.supportQuality ||
                                           "-"}
                                       </td>
 
-                                      {/* STATUS */}
                                       <td className="px-4 py-3 text-sm">
                                         <span
                                           className={
@@ -1785,7 +1715,6 @@ function Clientresource() {
                                         </span>
                                       </td>
 
-                                      {/* MENU */}
                                       <td
                                         className="px-2 py-3 relative text-center"
                                         onClick={(
@@ -2035,7 +1964,6 @@ function Clientresource() {
               event.stopPropagation()
             }
           >
-            {/* HEADER */}
             <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-medium text-gray-900">
@@ -2161,7 +2089,6 @@ function Clientresource() {
 
               {/* AUTO FETCHED CUSTOMER DATA */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
-                {/* COMPANY */}
                 <div>
                   <label className="block text-sm text-gray-700 mb-1.5">
                     Company
@@ -2179,7 +2106,6 @@ function Clientresource() {
                   />
                 </div>
 
-                {/* ACCOUNT MANAGER */}
                 <div>
                   <label className="block text-sm text-gray-700 mb-1.5">
                     Account Manager
@@ -2197,7 +2123,6 @@ function Clientresource() {
                   />
                 </div>
 
-                {/* COUNTRY */}
                 <div>
                   <label className="block text-sm text-gray-700 mb-1.5">
                     Country
@@ -2218,7 +2143,6 @@ function Clientresource() {
 
               {/* RESOURCE DATA */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* SELLING RATE */}
                 <div>
                   <label className="block text-sm text-gray-700 mb-1.5">
                     Selling Rate
@@ -2245,7 +2169,6 @@ function Clientresource() {
                   />
                 </div>
 
-                {/* PORTS */}
                 <div>
                   <label className="block text-sm text-gray-700 mb-1.5">
                     Ports
@@ -2270,7 +2193,6 @@ function Clientresource() {
                   />
                 </div>
 
-                {/* CREDIT */}
                 <div>
                   <label className="block text-sm text-gray-700 mb-1.5">
                     Credit
@@ -2296,7 +2218,6 @@ function Clientresource() {
                   />
                 </div>
 
-                {/* ROUTE TYPE */}
                 <div>
                   <label className="block text-sm text-gray-700 mb-1.5">
                     Route Type
@@ -2320,7 +2241,6 @@ function Clientresource() {
                   />
                 </div>
 
-                {/* SUPPORT QUALITY */}
                 <div>
                   <label className="block text-sm text-gray-700 mb-1.5">
                     Support Quality
@@ -2345,7 +2265,6 @@ function Clientresource() {
                   />
                 </div>
 
-                {/* STATUS */}
                 <div>
                   <label className="block text-sm text-gray-700 mb-1.5">
                     Status
@@ -2370,7 +2289,6 @@ function Clientresource() {
                   />
                 </div>
 
-                {/* QUALITY DESCRIPTION */}
                 <div className="md:col-span-2">
                   <label className="block text-sm text-gray-700 mb-1.5">
                     Quality Description
@@ -2412,7 +2330,6 @@ function Clientresource() {
                 </div>
               </div>
 
-              {/* BUTTONS */}
               <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-gray-200">
                 <button
                   type="button"
@@ -2480,7 +2397,6 @@ function Clientresource() {
                 className="p-5"
               >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* CUSTOMER ID */}
                   <div>
                     <label className="block text-sm text-gray-700 mb-1.5">
                       Customer ID
@@ -2496,7 +2412,6 @@ function Clientresource() {
                     />
                   </div>
 
-                  {/* COMPANY */}
                   <div>
                     <label className="block text-sm text-gray-700 mb-1.5">
                       Company
@@ -2512,7 +2427,6 @@ function Clientresource() {
                     />
                   </div>
 
-                  {/* ACCOUNT MANAGER */}
                   <div>
                     <label className="block text-sm text-gray-700 mb-1.5">
                       Account Manager
@@ -2528,7 +2442,6 @@ function Clientresource() {
                     />
                   </div>
 
-                  {/* COUNTRY */}
                   <div>
                     <label className="block text-sm text-gray-700 mb-1.5">
                       Country
@@ -2544,7 +2457,6 @@ function Clientresource() {
                     />
                   </div>
 
-                  {/* SELLING RATE */}
                   <div>
                     <label className="block text-sm text-gray-700 mb-1.5">
                       Selling Rate
@@ -2570,7 +2482,6 @@ function Clientresource() {
                     />
                   </div>
 
-                  {/* PORTS */}
                   <div>
                     <label className="block text-sm text-gray-700 mb-1.5">
                       Ports
@@ -2594,7 +2505,6 @@ function Clientresource() {
                     />
                   </div>
 
-                  {/* CREDIT */}
                   <div>
                     <label className="block text-sm text-gray-700 mb-1.5">
                       Credit
@@ -2619,7 +2529,6 @@ function Clientresource() {
                     />
                   </div>
 
-                  {/* ROUTE TYPE */}
                   <div>
                     <label className="block text-sm text-gray-700 mb-1.5">
                       Route Type
@@ -2643,7 +2552,6 @@ function Clientresource() {
                     />
                   </div>
 
-                  {/* SUPPORT QUALITY */}
                   <div>
                     <label className="block text-sm text-gray-700 mb-1.5">
                       Support Quality
@@ -2667,7 +2575,6 @@ function Clientresource() {
                     />
                   </div>
 
-                  {/* STATUS */}
                   <div>
                     <label className="block text-sm text-gray-700 mb-1.5">
                       Status
@@ -2691,7 +2598,6 @@ function Clientresource() {
                     />
                   </div>
 
-                  {/* QUALITY DESCRIPTION */}
                   <div className="md:col-span-2">
                     <label className="block text-sm text-gray-700 mb-1.5">
                       Quality Description
@@ -2780,7 +2686,6 @@ function Clientresource() {
                 event.stopPropagation()
               }
             >
-              {/* HEADER */}
               <div className="px-6 py-5 border-b border-gray-200 flex items-center justify-between">
                 <div>
                   <h2 className="text-lg font-medium text-gray-900">
@@ -2804,10 +2709,8 @@ function Clientresource() {
                 </button>
               </div>
 
-              {/* CONTENT */}
               <div className="p-6">
                 <div className="grid grid-cols-2 gap-x-8 gap-y-5">
-                  {/* CUSTOMER ID */}
                   <div>
                     <p className="text-xs text-gray-500">
                       Customer ID
@@ -2819,7 +2722,6 @@ function Clientresource() {
                     </p>
                   </div>
 
-                  {/* COMPANY */}
                   <div>
                     <p className="text-xs text-gray-500">
                       Company
@@ -2831,7 +2733,6 @@ function Clientresource() {
                     </p>
                   </div>
 
-                  {/* ACCOUNT MANAGER */}
                   <div>
                     <p className="text-xs text-gray-500">
                       Account Manager
@@ -2843,7 +2744,6 @@ function Clientresource() {
                     </p>
                   </div>
 
-                  {/* COUNTRY */}
                   <div>
                     <p className="text-xs text-gray-500">
                       Country
@@ -2855,7 +2755,6 @@ function Clientresource() {
                     </p>
                   </div>
 
-                  {/* SELLING RATE */}
                   <div>
                     <p className="text-xs text-gray-500">
                       Selling Rate
@@ -2867,7 +2766,6 @@ function Clientresource() {
                     </p>
                   </div>
 
-                  {/* PORTS */}
                   <div>
                     <p className="text-xs text-gray-500">
                       Ports
@@ -2879,7 +2777,6 @@ function Clientresource() {
                     </p>
                   </div>
 
-                  {/* CREDIT */}
                   <div>
                     <p className="text-xs text-gray-500">
                       Credit
@@ -2892,7 +2789,6 @@ function Clientresource() {
                     </p>
                   </div>
 
-                  {/* ROUTE TYPE */}
                   <div>
                     <p className="text-xs text-gray-500">
                       Route Type
@@ -2904,7 +2800,6 @@ function Clientresource() {
                     </p>
                   </div>
 
-                  {/* SUPPORT QUALITY */}
                   <div>
                     <p className="text-xs text-gray-500">
                       Support Quality
@@ -2916,7 +2811,6 @@ function Clientresource() {
                     </p>
                   </div>
 
-                  {/* STATUS */}
                   <div>
                     <p className="text-xs text-gray-500">
                       Status
@@ -2928,7 +2822,6 @@ function Clientresource() {
                     </p>
                   </div>
 
-                  {/* QUALITY DESCRIPTION */}
                   <div className="col-span-2">
                     <p className="text-xs text-gray-500">
                       Quality Description
@@ -2941,7 +2834,6 @@ function Clientresource() {
                   </div>
                 </div>
 
-                {/* CLOSE */}
                 <div className="flex justify-end mt-6 pt-4 border-t border-gray-200">
                   <button
                     onClick={() =>

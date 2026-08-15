@@ -1,5 +1,15 @@
-import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import {
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
+
+import {
+  Link,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
+
 import { supabase } from "../../supabaseClient";
 
 const LEADS_TABLE = "leads";
@@ -22,11 +32,19 @@ function LeadDetails() {
   // FETCH LEAD + COMPANY
   // =========================================================
 
-  const fetchLead = async () => {
+  const fetchLead = useCallback(async () => {
+    if (!leadId) {
+      return;
+    }
+
     setLoading(true);
     setError("");
 
     try {
+      // -------------------------------------------------------
+      // 1. FETCH LEAD
+      // -------------------------------------------------------
+
       const {
         data: leadData,
         error: leadError,
@@ -54,7 +72,7 @@ function LeadDetails() {
       setLead(leadData);
 
       // -------------------------------------------------------
-      // FETCH RELATED COMPANY
+      // 2. FETCH RELATED COMPANY
       // -------------------------------------------------------
 
       if (
@@ -101,13 +119,15 @@ function LeadDetails() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [leadId]);
+
+  // =========================================================
+  // INITIAL LOAD
+  // =========================================================
 
   useEffect(() => {
-    if (leadId) {
-      fetchLead();
-    }
-  }, [leadId]);
+    fetchLead();
+  }, [fetchLead]);
 
   // =========================================================
   // STYLES
@@ -164,7 +184,9 @@ function LeadDetails() {
   const convertLead = async (
     conversionType
   ) => {
-    if (!lead) return;
+    if (!lead) {
+      return;
+    }
 
     const target =
       conversionType === "CUSTOMER"
@@ -176,7 +198,9 @@ function LeadDetails() {
         `Convert this lead to ${target}?`
       );
 
-    if (!confirmed) return;
+    if (!confirmed) {
+      return;
+    }
 
     setConverting(true);
     setError("");
@@ -214,7 +238,6 @@ function LeadDetails() {
       // -------------------------------------------------------
       // 2. UPDATE COMPANY
       //
-      // IMPORTANT:
       // companies DOES NOT HAVE company_type
       // -------------------------------------------------------
 
@@ -262,6 +285,7 @@ function LeadDetails() {
         `Lead successfully converted to ${target}.`
       );
 
+      // Reload actual Supabase data
       await fetchLead();
     } catch (err) {
       console.error(
@@ -350,6 +374,12 @@ function LeadDetails() {
               {leadId}
             </p>
 
+            {error && (
+              <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-700">
+                {error}
+              </div>
+            )}
+
             <Link
               to="/leads"
               className="inline-flex mt-6 px-5 py-3 bg-black text-white rounded-lg"
@@ -365,6 +395,10 @@ function LeadDetails() {
     );
   }
 
+  // =========================================================
+  // CURRENT TYPE
+  // =========================================================
+
   const currentType =
     String(
       lead.company_type || "LEAD"
@@ -373,8 +407,16 @@ function LeadDetails() {
   const isLead =
     currentType === "LEAD";
 
+  // =========================================================
+  // MAIN PAGE
+  // =========================================================
+
   return (
     <div className="min-h-screen bg-gray-100">
+
+      {/* =====================================================
+          HEADER
+      ===================================================== */}
 
       <header className="h-16 bg-white border-b sticky top-0 z-40">
 
@@ -382,13 +424,15 @@ function LeadDetails() {
 
           <Link
             to="/leads"
-            className="flex items-center gap-2 text-sm font-semibold text-gray-700"
+            className="flex items-center gap-2 text-sm font-semibold text-gray-700 hover:text-black"
           >
+
             <span className="text-xl">
               ←
             </span>
 
             Back to Leads
+
           </Link>
 
           <div className="font-semibold text-gray-900">
@@ -399,21 +443,51 @@ function LeadDetails() {
 
       </header>
 
+      {/* =====================================================
+          MAIN
+      ===================================================== */}
+
       <main className="max-w-6xl mx-auto p-6 lg:p-8">
+
+        {/* ===================================================
+            ERROR
+        =================================================== */}
 
         {error && (
           <div className="mb-6 bg-red-50 border border-red-200 text-red-700 rounded-lg px-5 py-4">
-            {error}
+
+            <p className="font-medium">
+              Error
+            </p>
+
+            <p className="text-sm mt-1 break-words">
+              {error}
+            </p>
+
           </div>
         )}
+
+        {/* ===================================================
+            SUCCESS
+        =================================================== */}
 
         {success && (
           <div className="mb-6 bg-green-50 border border-green-200 text-green-700 rounded-lg px-5 py-4">
-            {success}
+
+            <p className="font-medium">
+              Success
+            </p>
+
+            <p className="text-sm mt-1">
+              {success}
+            </p>
+
           </div>
         )}
 
-        {/* TITLE */}
+        {/* ===================================================
+            TITLE
+        =================================================== */}
 
         <div className="mb-6">
 
@@ -426,12 +500,16 @@ function LeadDetails() {
               </p>
 
               <h1 className="text-3xl font-bold text-gray-900 mt-1">
+
                 {lead.lead_id ||
                   `Lead #${lead.id}`}
+
               </h1>
 
               <p className="text-xs text-gray-400 mt-2">
+
                 Database ID: {lead.id}
+
               </p>
 
             </div>
@@ -448,7 +526,9 @@ function LeadDetails() {
 
         </div>
 
-        {/* CONVERSION */}
+        {/* ===================================================
+            CONVERSION
+        =================================================== */}
 
         {isLead && (
           <section className="bg-white border rounded-xl shadow-sm mb-6">
@@ -460,7 +540,7 @@ function LeadDetails() {
               </h2>
 
               <p className="text-sm text-gray-500 mt-1">
-                Conversion changes leads.company_type and leads.status.
+                Convert this lead into a customer or vendor.
               </p>
 
             </div>
@@ -468,6 +548,8 @@ function LeadDetails() {
             <div className="p-6">
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                {/* CUSTOMER */}
 
                 <button
                   type="button"
@@ -477,7 +559,7 @@ function LeadDetails() {
                       "CUSTOMER"
                     )
                   }
-                  className="border border-green-200 rounded-xl p-6 text-left hover:bg-green-50 disabled:opacity-50"
+                  className="border border-green-200 rounded-xl p-6 text-left hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
                 >
 
                   <p className="text-xs font-semibold uppercase text-green-600">
@@ -489,10 +571,12 @@ function LeadDetails() {
                   </h3>
 
                   <p className="text-sm text-gray-500 mt-2">
-                    Sets leads.company_type to CUSTOMER.
+                    Sets leads.company_type to CUSTOMER and changes the lead status to CONVERTED.
                   </p>
 
                 </button>
+
+                {/* VENDOR */}
 
                 <button
                   type="button"
@@ -502,7 +586,7 @@ function LeadDetails() {
                       "VENDOR"
                     )
                   }
-                  className="border border-purple-200 rounded-xl p-6 text-left hover:bg-purple-50 disabled:opacity-50"
+                  className="border border-purple-200 rounded-xl p-6 text-left hover:bg-purple-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
                 >
 
                   <p className="text-xs font-semibold uppercase text-purple-600">
@@ -514,7 +598,7 @@ function LeadDetails() {
                   </h3>
 
                   <p className="text-sm text-gray-500 mt-2">
-                    Sets leads.company_type to VENDOR.
+                    Sets leads.company_type to VENDOR and changes the lead status to CONVERTED.
                   </p>
 
                 </button>
@@ -532,7 +616,9 @@ function LeadDetails() {
           </section>
         )}
 
-        {/* LEAD INFORMATION */}
+        {/* ===================================================
+            LEAD INFORMATION
+        =================================================== */}
 
         <section className="bg-white border rounded-xl shadow-sm mb-6">
 
@@ -541,6 +627,10 @@ function LeadDetails() {
             <h2 className="text-lg font-bold text-gray-900">
               Lead Information
             </h2>
+
+            <p className="text-sm text-gray-500 mt-1">
+              Information stored in the leads table.
+            </p>
 
           </div>
 
@@ -606,7 +696,9 @@ function LeadDetails() {
 
         </section>
 
-        {/* COMPANY INFORMATION */}
+        {/* ===================================================
+            COMPANY INFORMATION
+        =================================================== */}
 
         <section className="bg-white border rounded-xl shadow-sm mb-6">
 
@@ -616,11 +708,16 @@ function LeadDetails() {
               Company Information
             </h2>
 
+            <p className="text-sm text-gray-500 mt-1">
+              Company information linked through leads.company_id.
+            </p>
+
           </div>
 
           <div className="p-6">
 
             {company ? (
+
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 border border-gray-200 rounded-lg overflow-hidden">
 
                 <InfoCell
@@ -655,6 +752,11 @@ function LeadDetails() {
                 <InfoCell
                   label="Country"
                   value={company.country}
+                />
+
+                <InfoCell
+                  label="Website"
+                  value={company.website}
                 />
 
                 <InfoCell
@@ -694,7 +796,9 @@ function LeadDetails() {
                 />
 
               </div>
+
             ) : (
+
               <div className="border border-yellow-200 bg-yellow-50 rounded-lg p-5">
 
                 <p className="font-semibold text-yellow-800">
@@ -706,36 +810,138 @@ function LeadDetails() {
                   {lead.company_id || "NULL"}
                 </p>
 
+                <p className="text-xs text-yellow-600 mt-2">
+                  The lead exists, but no matching record was found in the companies table.
+                </p>
+
               </div>
+
             )}
 
           </div>
 
         </section>
 
-        {/* CONVERTED */}
+        {/* ===================================================
+            CONVERTED STATUS
+        =================================================== */}
 
         {!isLead && (
           <section className="bg-white border rounded-xl shadow-sm mb-6">
 
             <div className="p-6">
 
-              <h2 className="font-bold text-gray-900">
-                Lead Converted
-              </h2>
+              <div className="flex items-center gap-3">
 
-              <p className="text-sm text-gray-500 mt-1">
-                This lead is now a{" "}
-                <strong>
-                  {currentType}
-                </strong>
-                .
-              </p>
+                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
+                  ✓
+                </div>
+
+                <div>
+
+                  <h2 className="font-bold text-gray-900">
+                    Lead Converted
+                  </h2>
+
+                  <p className="text-sm text-gray-500 mt-1">
+
+                    This lead is now a{" "}
+
+                    <strong>
+                      {currentType}
+                    </strong>
+                    .
+
+                  </p>
+
+                </div>
+
+              </div>
 
             </div>
 
           </section>
         )}
+
+        {/* ===================================================
+            DATABASE INFORMATION
+        =================================================== */}
+
+        <section className="bg-white border rounded-xl shadow-sm mb-6">
+
+          <div className="px-6 py-5 border-b">
+
+            <h2 className="text-lg font-bold text-gray-900">
+              Database Information
+            </h2>
+
+            <p className="text-sm text-gray-500 mt-1">
+              Raw relationship information used by CloudCRM.
+            </p>
+
+          </div>
+
+          <div className="p-6">
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+              <div className="border border-gray-200 rounded-lg p-4">
+
+                <p className="text-xs uppercase tracking-wide font-semibold text-gray-400">
+                  Lead Table
+                </p>
+
+                <p className="text-sm font-semibold text-gray-900 mt-2">
+                  {LEADS_TABLE}
+                </p>
+
+              </div>
+
+              <div className="border border-gray-200 rounded-lg p-4">
+
+                <p className="text-xs uppercase tracking-wide font-semibold text-gray-400">
+                  Company Table
+                </p>
+
+                <p className="text-sm font-semibold text-gray-900 mt-2">
+                  {COMPANIES_TABLE}
+                </p>
+
+              </div>
+
+              <div className="border border-gray-200 rounded-lg p-4">
+
+                <p className="text-xs uppercase tracking-wide font-semibold text-gray-400">
+                  Lead Database ID
+                </p>
+
+                <p className="text-sm font-semibold text-gray-900 mt-2 break-all">
+                  {lead.id}
+                </p>
+
+              </div>
+
+              <div className="border border-gray-200 rounded-lg p-4">
+
+                <p className="text-xs uppercase tracking-wide font-semibold text-gray-400">
+                  Related Company Database ID
+                </p>
+
+                <p className="text-sm font-semibold text-gray-900 mt-2 break-all">
+                  {lead.company_id || "NULL"}
+                </p>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </section>
+
+        {/* ===================================================
+            BACK BUTTON
+        =================================================== */}
 
         <div className="pb-8">
 
@@ -785,12 +991,15 @@ function InfoCell({
 
         {badge &&
         displayValue !== "—" ? (
+
           <span
             className={`inline-flex px-3 py-1 rounded-md border text-xs font-semibold ${badgeClass}`}
           >
             {displayValue}
           </span>
+
         ) : (
+
           <p
             className={`text-sm ${
               displayValue === "—"
@@ -800,6 +1009,7 @@ function InfoCell({
           >
             {displayValue}
           </p>
+
         )}
 
       </div>
@@ -809,15 +1019,21 @@ function InfoCell({
 }
 
 // =============================================================
-// DATE
+// DATE FORMAT
 // =============================================================
 
 function formatDate(value) {
-  if (!value) return null;
+  if (!value) {
+    return null;
+  }
 
   const date = new Date(value);
 
-  if (Number.isNaN(date.getTime())) {
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
     return value;
   }
 
