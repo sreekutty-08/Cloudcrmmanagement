@@ -34,6 +34,7 @@ function Vendors() {
     phone: "",
     email: "",
     ipAddresses: "",
+    description: "",
     vendorStatus: "ACTIVE",
   };
 
@@ -125,27 +126,47 @@ function Vendors() {
             company,
 
             company_name:
-              company.company_name || "",
+              vendor.company_name ||
+              company.company_name ||
+              "",
 
             account_manager:
-              company.account_manager || "",
+              vendor.account_manager ||
+              company.account_manager ||
+              "",
 
             country:
-              company.country || "",
+              vendor.country ||
+              company.country ||
+              "",
+
+            website:
+              vendor.website || "",
 
             contact_person:
-              company.contact_person || "",
+              vendor.contact_person ||
+              company.contact_person ||
+              "",
 
             phone:
-              company.phone || "",
+              vendor.phone ||
+              company.phone ||
+              "",
 
             email:
-              company.email || "",
+              vendor.email ||
+              company.email ||
+              "",
 
             // IMPORTANT:
             // IP ADDRESS COMES FROM vendors.ip_addresses
             ip_addresses:
               vendor.ip_addresses || [],
+
+            // IMPORTANT:
+            // DESCRIPTION COMES FROM vendors.description
+            description:
+              vendor.description || "",
           };
         }
       );
@@ -308,8 +329,9 @@ function Vendors() {
       // IMPORTANT:
       // NO website
       // NO ip_addresses
+      // NO description
       //
-      // Because those columns do not exist in companies.
+      // These vendor-specific values are stored in vendors.
       // ========================================================
 
       const companyPayload = {
@@ -366,7 +388,9 @@ function Vendors() {
       // VENDOR PAYLOAD
       //
       // IMPORTANT:
-      // ip_addresses belongs to vendors.
+      // website belongs to vendors.website
+      // ip_addresses belongs to vendors.ip_addresses
+      // description belongs to vendors.description
       // ========================================================
 
       const vendorPayload = {
@@ -378,8 +402,14 @@ function Vendors() {
         status:
           formData.vendorStatus,
 
+        website:
+          formData.website.trim(),
+
         ip_addresses:
           ipAddresses,
+
+        description:
+          formData.description.trim(),
       };
 
       console.log(
@@ -928,7 +958,7 @@ function Vendors() {
                         className="hover:bg-gray-50 transition"
                       >
 
-                        {/* CHANGED ONLY: py-5 → py-3 */}
+                        {/* VENDOR ID */}
 
                         <td className="px-6 py-3">
 
@@ -938,6 +968,8 @@ function Vendors() {
 
                         </td>
 
+                        {/* COMPANY NAME */}
+
                         <td className="px-6 py-3">
 
                           <span className="font-semibold text-sm text-gray-900">
@@ -945,6 +977,8 @@ function Vendors() {
                           </span>
 
                         </td>
+
+                        {/* ACCOUNT MANAGER */}
 
                         <td className="px-6 py-3">
 
@@ -954,7 +988,7 @@ function Vendors() {
 
                         </td>
 
-                        {/* STATUS CHANGED TO TEXT ONLY */}
+                        {/* STATUS */}
 
                         <td className="px-6 py-3">
 
@@ -970,6 +1004,8 @@ function Vendors() {
                           </span>
 
                         </td>
+
+                        {/* ACTION */}
 
                         <td className="px-6 py-3">
 
@@ -1210,11 +1246,6 @@ function Vendors() {
                         className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none bg-gray-50 focus:bg-white focus:border-black focus:ring-1 focus:ring-black transition"
                       />
 
-                      <p className="text-[11px] text-gray-400 mt-1.5">
-                        Website is currently kept in the form only because the
-                        companies table does not have a website column.
-                      </p>
-
                     </div>
 
                     {/* CONTACT PERSON */}
@@ -1325,11 +1356,64 @@ You can also separate IPs with commas.`}
                     />
 
                     <p className="text-xs text-gray-400 mt-2">
+
                       These values are saved to the{" "}
+
                       <span className="font-mono text-gray-600">
                         vendors.ip_addresses
                       </span>{" "}
+
                       column.
+
+                    </p>
+
+                  </div>
+
+                </div>
+
+                {/* DESCRIPTION */}
+
+                <div className="border-t border-gray-100 pt-7 mt-7">
+
+                  <div className="mb-5">
+
+                    <h3 className="text-base font-bold text-gray-900">
+                      Vendor Description
+                    </h3>
+
+                    <p className="text-sm text-gray-500 mt-1">
+                      Add a description or notes about this vendor.
+                    </p>
+
+                  </div>
+
+                  <div>
+
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Description
+                    </label>
+
+                    <textarea
+                      name="description"
+                      value={
+                        formData.description
+                      }
+                      onChange={handleChange}
+                      rows="5"
+                      placeholder="Enter vendor description..."
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none bg-gray-50 focus:bg-white focus:border-black focus:ring-1 focus:ring-black transition resize-none text-sm"
+                    />
+
+                    <p className="text-xs text-gray-400 mt-2">
+
+                      This description is saved to the{" "}
+
+                      <span className="font-mono text-gray-600">
+                        vendors.description
+                      </span>{" "}
+
+                      column.
+
                     </p>
 
                   </div>
