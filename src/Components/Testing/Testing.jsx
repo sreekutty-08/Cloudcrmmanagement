@@ -68,6 +68,22 @@ function Testing() {
   const [openMenu, setOpenMenu] = useState(null);
 
   // =========================================================
+  // NEW ADD / ENTITY SELECTION UI
+  // =========================================================
+
+  const [showAddSelector, setShowAddSelector] =
+    useState(false);
+
+  const [entityTypeToAdd, setEntityTypeToAdd] =
+    useState("LEAD");
+
+  const [entityIdInput, setEntityIdInput] =
+    useState("");
+
+  const [entitySearchError, setEntitySearchError] =
+    useState("");
+
+  // =========================================================
   // TESTING FORM
   // =========================================================
 
@@ -443,7 +459,6 @@ function Testing() {
 
   // =========================================================
   // GET TESTING RECORDS
-  // FIXED WITH useCallback
   // =========================================================
 
   const getTestingRecords = useCallback(
@@ -465,7 +480,6 @@ function Testing() {
 
   // =========================================================
   // GET LATEST TESTING
-  // FIXED WITH useCallback
   // =========================================================
 
   const getLatestTesting = useCallback(
@@ -482,7 +496,6 @@ function Testing() {
 
   // =========================================================
   // GET QUALITY DESCRIPTION
-  // FIXED WITH useCallback
   // =========================================================
 
   const getQualityDescription =
@@ -506,7 +519,7 @@ function Testing() {
     );
 
   // =========================================================
-  // FILTER
+  // SEARCH / FILTER
   // =========================================================
 
   const filteredEntities =
@@ -534,19 +547,12 @@ function Testing() {
 
           const searchableValues = [
             entity.source,
-
             entity.displayId,
-
             entity.sourceId,
-
             entity.companyName,
-
             entity.accountManager,
-
             status,
-
             quality?.description,
-
             quality?.country,
           ];
 
@@ -602,35 +608,198 @@ function Testing() {
     ]);
 
   // =========================================================
+  // SELECTED ENTITY ONLY
+  // =========================================================
+
+  const displayedEntities =
+    useMemo(() => {
+      if (!selectedEntity) {
+        return [];
+      }
+
+      return filteredEntities.filter(
+        (entity) =>
+          entity.source ===
+            selectedEntity.source &&
+          String(entity.sourceId) ===
+            String(selectedEntity.sourceId)
+      );
+    }, [
+      filteredEntities,
+      selectedEntity,
+    ]);
+
+  // =========================================================
+  // FIND ENTITY BY TYPED ID
+  // =========================================================
+
+  const findEntityByTypedId = () => {
+    setEntitySearchError("");
+
+    const typedId =
+      entityIdInput.trim();
+
+    if (!typedId) {
+      setEntitySearchError(
+        "Please enter an ID."
+      );
+      return;
+    }
+
+    const normalizedId =
+      typedId.toLowerCase();
+
+    let matchingEntity =
+      null;
+
+    if (entityTypeToAdd === "LEAD") {
+      matchingEntity =
+        entities.find(
+          (entity) =>
+            entity.source ===
+              "LEAD" &&
+            (
+              String(
+                entity.displayId
+              ).toLowerCase() ===
+                normalizedId ||
+              String(
+                entity.sourceId
+              ).toLowerCase() ===
+                normalizedId
+            )
+        );
+    }
+
+    if (
+      entityTypeToAdd ===
+      "CUSTOMER"
+    ) {
+      matchingEntity =
+        entities.find(
+          (entity) =>
+            entity.source ===
+              "CUSTOMER" &&
+            (
+              String(
+                entity.displayId
+              ).toLowerCase() ===
+                normalizedId ||
+              String(
+                entity.sourceId
+              ).toLowerCase() ===
+                normalizedId
+            )
+        );
+    }
+
+    if (
+      entityTypeToAdd ===
+      "VENDOR"
+    ) {
+      matchingEntity =
+        entities.find(
+          (entity) =>
+            entity.source ===
+              "VENDOR" &&
+            (
+              String(
+                entity.displayId
+              ).toLowerCase() ===
+                normalizedId ||
+              String(
+                entity.sourceId
+              ).toLowerCase() ===
+                normalizedId
+            )
+        );
+    }
+
+    if (!matchingEntity) {
+      setEntitySearchError(
+        `No ${entityTypeToAdd.toLowerCase()} found with ID "${typedId}".`
+      );
+      return;
+    }
+
+    // Only the selected entity will be displayed.
+    setSelectedEntity(
+      matchingEntity
+    );
+
+    setEntityIdInput("");
+    setEntitySearchError("");
+    setShowAddSelector(false);
+
+    setSearch("");
+    setStatusFilter("");
+    setQualityFilter("");
+    setEntityFilter("");
+
+    setSuccess(
+      `${matchingEntity.source} ${matchingEntity.displayId} selected successfully.`
+    );
+    setError("");
+  };
+
+  // =========================================================
+  // CLEAR SELECTED ENTITY
+  // =========================================================
+
+  const clearSelectedEntity = () => {
+    setSelectedEntity(null);
+    setSelectedTesting(null);
+    setShowAddSelector(false);
+    setEntityIdInput("");
+    setEntitySearchError("");
+    setSearch("");
+    setStatusFilter("");
+    setQualityFilter("");
+    setEntityFilter("");
+    setSuccess("");
+    setError("");
+    setOpenMenu(null);
+  };
+
+  // =========================================================
   // SUMMARY
   // =========================================================
 
+  const selectedTestingRecords =
+    selectedEntity
+      ? getTestingRecords(
+          selectedEntity
+        )
+      : [];
+
   const totalRequests =
-    testingRecords.length;
+    selectedEntity
+      ? selectedTestingRecords.length
+      : 0;
 
   const testingCount =
-    testingRecords.filter(
+    selectedTestingRecords.filter(
       (item) =>
         item.status ===
         "TESTING"
     ).length;
 
   const successCount =
-    testingRecords.filter(
+    selectedTestingRecords.filter(
       (item) =>
         item.status ===
         "TEST_SUCCESS"
     ).length;
 
   const failedCount =
-    testingRecords.filter(
+    selectedTestingRecords.filter(
       (item) =>
         item.status ===
         "TEST_FAILED"
     ).length;
 
   const terminatedCount =
-    testingRecords.filter(
+    selectedTestingRecords.filter(
       (item) =>
         item.status ===
         "TEST_TERMINATED"
@@ -866,14 +1035,6 @@ function Testing() {
 
         await fetchData();
 
-        /*
-         * Keep the modal open so the user can immediately
-         * see the saved testing status/details.
-         *
-         * The table status will update automatically after
-         * fetchData() completes.
-         */
-
         if (
           selectedTesting
         ) {
@@ -947,10 +1108,6 @@ function Testing() {
             false
           );
 
-          setSelectedEntity(
-            null
-          );
-
           setSelectedTesting(
             null
           );
@@ -1011,16 +1168,16 @@ function Testing() {
       type
     ) {
       case "LEAD":
-        return "text-blue-700 ";
+        return "text-blue-700";
 
       case "CUSTOMER":
-        return "text-green-700 ";
+        return "text-green-700";
 
       case "VENDOR":
-        return "text-purple-700 ";
+        return "text-purple-700";
 
       default:
-        return "text-gray-600 ";
+        return "text-gray-600";
     }
   };
 
@@ -1035,10 +1192,6 @@ function Testing() {
 
     setShowDetailsModal(
       false
-    );
-
-    setSelectedEntity(
-      null
     );
 
     setSelectedTesting(
@@ -1092,7 +1245,230 @@ function Testing() {
             </p>
           </div>
 
+          {/* ADD BUTTON */}
+
+          <button
+            type="button"
+            onClick={() => {
+              setShowAddSelector(
+                !showAddSelector
+              );
+
+              setEntitySearchError("");
+              setEntityIdInput("");
+              setError("");
+              setSuccess("");
+            }}
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-black text-white rounded-md text-sm font-semibold hover:bg-gray-800"
+          >
+            <span className="text-lg leading-none">
+              +
+            </span>
+
+            Add Testing
+          </button>
+
         </div>
+
+        {/* =====================================================
+            ADD TESTING SELECTOR
+        ===================================================== */}
+
+        {showAddSelector && (
+          <div className="bg-white border border-gray-300 rounded-lg p-5 mb-5 shadow-sm">
+
+            <div className="flex items-center justify-between mb-4">
+
+              <div>
+                <h2 className="text-sm font-bold text-gray-900">
+                  Add Testing
+                </h2>
+
+                <p className="text-xs text-gray-500 mt-1">
+                  Enter one Lead, Customer or Vendor ID
+                  to load that record.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAddSelector(false);
+                  setEntityIdInput("");
+                  setEntitySearchError("");
+                }}
+                className="w-8 h-8 rounded-md border border-gray-300 text-gray-600 hover:bg-gray-100"
+              >
+                ×
+              </button>
+
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-[180px_1fr_auto] gap-3">
+
+              {/* ENTITY TYPE */}
+
+              <select
+                value={
+                  entityTypeToAdd
+                }
+                onChange={(e) => {
+                  setEntityTypeToAdd(
+                    e.target.value
+                  );
+
+                  setEntityIdInput("");
+                  setEntitySearchError("");
+                }}
+                className="h-11 px-3 border border-gray-300 rounded-md bg-white text-sm outline-none focus:border-black"
+              >
+
+                {ENTITY_TYPES.map(
+                  (type) => (
+                    <option
+                      key={type}
+                      value={type}
+                    >
+                      {type}
+                    </option>
+                  )
+                )}
+
+              </select>
+
+              {/* ID INPUT */}
+
+              <input
+                type="text"
+                value={
+                  entityIdInput
+                }
+                onChange={(e) => {
+                  setEntityIdInput(
+                    e.target.value
+                  );
+
+                  setEntitySearchError("");
+                }}
+                onKeyDown={(e) => {
+                  if (
+                    e.key ===
+                    "Enter"
+                  ) {
+                    e.preventDefault();
+                    findEntityByTypedId();
+                  }
+                }}
+                placeholder={`Enter ${entityTypeToAdd.toLowerCase()} ID...`}
+                className="h-11 px-3 border border-gray-300 rounded-md text-sm outline-none focus:border-black"
+              />
+
+              {/* FIND BUTTON */}
+
+              <button
+                type="button"
+                onClick={
+                  findEntityByTypedId
+                }
+                className="h-11 px-5 bg-black text-white rounded-md text-sm font-semibold hover:bg-gray-800"
+              >
+                Add
+              </button>
+
+            </div>
+
+            {entitySearchError && (
+              <div className="mt-3 px-3 py-2.5 bg-red-50 border border-red-200 rounded-md text-sm text-red-700">
+                {entitySearchError}
+              </div>
+            )}
+
+            <div className="mt-3 text-xs text-gray-500">
+              Example: Enter the existing Lead ID,
+              Customer ID or Vendor ID. Only that selected
+              record will appear on this page.
+            </div>
+
+          </div>
+        )}
+
+        {/* =====================================================
+            SELECTED ENTITY BAR
+        ===================================================== */}
+
+        {selectedEntity && (
+          <div className="bg-white border border-gray-300 rounded-lg px-5 py-4 mb-5">
+
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+
+              <div>
+
+                <div className="flex items-center gap-2">
+
+                  <span
+                    className={`text-xs font-bold ${getEntityStyle(
+                      selectedEntity.source
+                    )}`}
+                  >
+                    {selectedEntity.source}
+                  </span>
+
+                  <span className="text-gray-300">
+                    /
+                  </span>
+
+                  <span className="text-sm font-bold text-gray-900">
+                    {selectedEntity.displayId}
+                  </span>
+
+                </div>
+
+                <p className="text-sm text-gray-700 mt-1">
+                  {selectedEntity.companyName}
+                </p>
+
+                <p className="text-xs text-gray-500 mt-1">
+                  Account Manager:{" "}
+                  {selectedEntity.accountManager}
+                </p>
+
+              </div>
+
+              <div className="flex items-center gap-2">
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddSelector(
+                      true
+                    );
+                    setEntityTypeToAdd(
+                      "LEAD"
+                    );
+                    setEntityIdInput("");
+                    setEntitySearchError("");
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium hover:bg-gray-50"
+                >
+                  Change
+                </button>
+
+                <button
+                  type="button"
+                  onClick={
+                    clearSelectedEntity
+                  }
+                  className="px-4 py-2 border border-red-200 text-red-600 rounded-md text-sm font-medium hover:bg-red-50"
+                >
+                  Clear
+                </button>
+
+              </div>
+
+            </div>
+
+          </div>
+        )}
 
         {/* ALERT */}
 
@@ -1108,223 +1484,266 @@ function Testing() {
           </div>
         )}
 
-        {/* ===================================================
+        {/* =====================================================
             SUMMARY
-        =================================================== */}
+        ===================================================== */}
 
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
 
           <SummaryCard
             label="Total Requests"
-            value={totalRequests}
+            value={
+              totalRequests
+            }
           />
 
           <SummaryCard
             label="Testing"
-            value={testingCount}
+            value={
+              testingCount
+            }
           />
 
           <SummaryCard
             label="Success"
-            value={successCount}
+            value={
+              successCount
+            }
           />
 
           <SummaryCard
             label="Failed"
-            value={failedCount}
+            value={
+              failedCount
+            }
           />
 
           <SummaryCard
             label="Terminated"
-            value={terminatedCount}
+            value={
+              terminatedCount
+            }
           />
 
         </div>
 
-        {/* ===================================================
+        {/* =====================================================
             FILTERS
-        =================================================== */}
+        ===================================================== */}
 
-        <div className="bg-white border border-gray-300 rounded-md p-3 mb-4">
+        {selectedEntity && (
+          <div className="bg-white border border-gray-300 rounded-md p-3 mb-4">
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
 
-            {/* SEARCH */}
+              {/* SEARCH */}
 
-            <input
-              type="text"
-              value={search}
-              onChange={(e) =>
-                setSearch(
-                  e.target.value
-                )
-              }
-              placeholder="Search ID, company or manager..."
-              className="h-10 px-3 border border-gray-300 rounded-md text-sm outline-none focus:border-black"
-            />
+              <input
+                type="text"
+                value={
+                  search
+                }
+                onChange={(e) =>
+                  setSearch(
+                    e.target.value
+                  )
+                }
+                placeholder="Search ID, company or manager..."
+                className="h-10 px-3 border border-gray-300 rounded-md text-sm outline-none focus:border-black"
+              />
 
-            {/* STATUS */}
+              {/* STATUS */}
 
-            <select
-              value={statusFilter}
-              onChange={(e) =>
-                setStatusFilter(
-                  e.target.value
-                )
-              }
-              className="h-10 px-3 border border-gray-300 rounded-md bg-white text-sm"
-            >
+              <select
+                value={
+                  statusFilter
+                }
+                onChange={(e) =>
+                  setStatusFilter(
+                    e.target.value
+                  )
+                }
+                className="h-10 px-3 border border-gray-300 rounded-md bg-white text-sm"
+              >
 
-              <option value="">
-                All Testing Status
-              </option>
+                <option value="">
+                  All Testing Status
+                </option>
 
-              {TESTING_STATUSES.map(
-                (status) => (
-                  <option
-                    key={status}
-                    value={status}
-                  >
-                    {status}
-                  </option>
-                )
-              )}
+                {TESTING_STATUSES.map(
+                  (status) => (
+                    <option
+                      key={status}
+                      value={status}
+                    >
+                      {status}
+                    </option>
+                  )
+                )}
 
-            </select>
+              </select>
 
-            {/* QUALITY FILTER */}
+              {/* QUALITY FILTER */}
 
-            <select
-              value={qualityFilter}
-              onChange={(e) =>
-                setQualityFilter(
-                  e.target.value
-                )
-              }
-              className="h-10 px-3 border border-gray-300 rounded-md bg-white text-sm"
-            >
+              <select
+                value={
+                  qualityFilter
+                }
+                onChange={(e) =>
+                  setQualityFilter(
+                    e.target.value
+                  )
+                }
+                className="h-10 px-3 border border-gray-300 rounded-md bg-white text-sm"
+              >
 
-              <option value="">
-                All Quality Descriptions
-              </option>
+                <option value="">
+                  All Quality Descriptions
+                </option>
 
-              {qualityDescriptions.map(
-                (quality) => (
-                  <option
-                    key={quality.id}
-                    value={quality.id}
-                  >
-                    {quality.description}
-                  </option>
-                )
-              )}
+                {qualityDescriptions.map(
+                  (quality) => (
+                    <option
+                      key={
+                        quality.id
+                      }
+                      value={
+                        quality.id
+                      }
+                    >
+                      {
+                        quality.description
+                      }
+                    </option>
+                  )
+                )}
 
-            </select>
+              </select>
 
-            {/* ENTITY */}
+              {/* ENTITY */}
 
-            <select
-              value={entityFilter}
-              onChange={(e) =>
-                setEntityFilter(
-                  e.target.value
-                )
-              }
-              className="h-10 px-3 border border-gray-300 rounded-md bg-white text-sm"
-            >
+              <select
+                value={
+                  entityFilter
+                }
+                onChange={(e) =>
+                  setEntityFilter(
+                    e.target.value
+                  )
+                }
+                className="h-10 px-3 border border-gray-300 rounded-md bg-white text-sm"
+              >
 
-              <option value="">
-                Lead / Customer / Vendor
-              </option>
+                <option value="">
+                  Lead / Customer / Vendor
+                </option>
 
-              {ENTITY_TYPES.map(
-                (type) => (
-                  <option
-                    key={type}
-                    value={type}
-                  >
-                    {type}
-                  </option>
-                )
-              )}
+                {ENTITY_TYPES.map(
+                  (type) => (
+                    <option
+                      key={type}
+                      value={type}
+                    >
+                      {type}
+                    </option>
+                  )
+                )}
 
-            </select>
+              </select>
+
+            </div>
 
           </div>
+        )}
 
-        </div>
-
-        {/* ===================================================
+        {/* =====================================================
             TABLE
-        =================================================== */}
+        ===================================================== */}
 
         <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-visible">
 
-          <div className="overflow-x-auto">
+          {!selectedEntity ? (
+            <div className="px-6 py-20 text-center">
 
-            <table className="w-full min-w-[900px]">
+              <div className="w-14 h-14 mx-auto rounded-full bg-gray-100 flex items-center justify-center mb-4">
 
-              <thead className="bg-gray-50 border-b border-gray-200">
+                <span className="text-2xl text-gray-500">
+                  +
+                </span>
 
-                <tr>
+              </div>
 
-                  <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                    ID
-                  </th>
+              <h3 className="text-base font-semibold text-gray-900">
+                No testing record selected
+              </h3>
 
-                  <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                    Type
-                  </th>
+              <p className="text-sm text-gray-500 mt-1 max-w-md mx-auto">
+                Click the{" "}
+                <span className="font-semibold">
+                  Add Testing
+                </span>{" "}
+                button above and enter a Lead,
+                Customer or Vendor ID.
+              </p>
 
-                  <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                    Company
-                  </th>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAddSelector(
+                    true
+                  );
+                  setEntityIdInput("");
+                  setEntitySearchError("");
+                }}
+                className="mt-5 px-5 py-2.5 bg-black text-white rounded-md text-sm font-semibold hover:bg-gray-800"
+              >
+                + Add Testing
+              </button>
 
-                  <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                    Account Manager
-                  </th>
+            </div>
+          ) : (
 
-                  <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                    Testing Status
-                  </th>
+            <div className="overflow-x-auto">
 
-                  <th className="text-right px-5 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                    Action
-                  </th>
+              <table className="w-full min-w-[900px]">
 
-                </tr>
+                <thead className="bg-gray-50 border-b border-gray-200">
 
-              </thead>
-
-              <tbody>
-
-                {/* LOADING */}
-
-                {loading && (
                   <tr>
 
-                    <td
-                      colSpan="6"
-                      className="px-5 py-12 text-center"
-                    >
+                    <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                      ID
+                    </th>
 
-                      <div className="w-7 h-7 border-2 border-gray-300 border-t-black rounded-full animate-spin mx-auto mb-3" />
+                    <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                      Type
+                    </th>
 
-                      <p className="text-sm text-gray-500">
-                        Loading leads, customers,
-                        vendors and testing...
-                      </p>
+                    <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                      Company
+                    </th>
 
-                    </td>
+                    <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                      Account Manager
+                    </th>
+
+                    <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                      Testing Status
+                    </th>
+
+                    <th className="text-right px-5 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                      Action
+                    </th>
 
                   </tr>
-                )}
 
-                {/* EMPTY */}
+                </thead>
 
-                {!loading &&
-                  filteredEntities.length ===
-                    0 && (
+                <tbody>
+
+                  {/* LOADING */}
+
+                  {loading && (
                     <tr>
 
                       <td
@@ -1332,12 +1751,11 @@ function Testing() {
                         className="px-5 py-12 text-center"
                       >
 
-                        <p className="text-sm font-medium text-gray-700">
-                          No records found
-                        </p>
+                        <div className="w-7 h-7 border-2 border-gray-300 border-t-black rounded-full animate-spin mx-auto mb-3" />
 
-                        <p className="text-xs text-gray-500 mt-1">
-                          Try changing your filters.
+                        <p className="text-sm text-gray-500">
+                          Loading leads, customers,
+                          vendors and testing...
                         </p>
 
                       </td>
@@ -1345,244 +1763,282 @@ function Testing() {
                     </tr>
                   )}
 
-                {/* DATA */}
+                  {/* EMPTY */}
 
-                {!loading &&
-                  filteredEntities.map(
-                    (entity) => {
-                      const latestTesting =
-                        getLatestTesting(
-                          entity
-                        );
+                  {!loading &&
+                    displayedEntities.length ===
+                      0 && (
+                      <tr>
 
-                      const status =
-                        latestTesting?.status ||
-                        "NOT_REQUESTED";
-
-                      return (
-                        <tr
-                          key={`${entity.source}-${entity.sourceId}`}
-                          className="border-b border-gray-100 last:border-b-0 hover:bg-gray-50"
+                        <td
+                          colSpan="6"
+                          className="px-5 py-12 text-center"
                         >
 
-                          {/* ID */}
+                          <p className="text-sm font-medium text-gray-700">
+                            No testing request found
+                          </p>
 
-                          <td className="px-5 py-4">
+                          <p className="text-xs text-gray-500 mt-1">
+                            Click Request Testing
+                            to create one for this
+                            selected entity.
+                          </p>
 
-                            <p className="text-sm font-semibold text-gray-900">
-                              {entity.displayId}
-                            </p>
+                        </td>
 
-                            <p className="text-[10px] text-gray-400 mt-1">
-                              DB ID:{" "}
-                              {entity.sourceId}
-                            </p>
+                      </tr>
+                    )}
 
-                          </td>
+                  {/* DATA */}
 
-                          {/* TYPE */}
+                  {!loading &&
+                    displayedEntities.map(
+                      (entity) => {
+                        const latestTesting =
+                          getLatestTesting(
+                            entity
+                          );
 
-                          <td className="px-5 py-4">
+                        const status =
+                          latestTesting?.status ||
+                          "NOT_REQUESTED";
 
-                            <span
-                              className={`inline-flex px-2.5 py-1   text-xs font-semibold ${getEntityStyle(
-                                entity.source
-                              )}`}
-                            >
-                              {entity.source}
-                            </span>
+                        return (
+                          <tr
+                            key={`${entity.source}-${entity.sourceId}`}
+                            className="border-b border-gray-100 last:border-b-0 hover:bg-gray-50"
+                          >
 
-                          </td>
+                            {/* ID */}
 
-                          {/* COMPANY */}
+                            <td className="px-5 py-4">
 
-                          <td className="px-5 py-4">
-
-                            <p className="text-sm font-semibold text-gray-900">
-                              {entity.companyName}
-                            </p>
-
-                            {entity.companyId && (
-                              <p className="text-xs text-gray-400 mt-1">
-                                Company ID:{" "}
+                              <p className="text-sm font-semibold text-gray-900">
                                 {
-                                  entity.companyId
+                                  entity.displayId
                                 }
                               </p>
-                            )}
 
-                          </td>
-
-                          {/* MANAGER */}
-
-                          <td className="px-5 py-4">
-
-                            <span className="text-sm text-gray-700">
-                              {
-                                entity.accountManager
-                              }
-                            </span>
-
-                          </td>
-
-                          {/* STATUS */}
-
-                          <td className="px-5 py-4">
-
-                            <span
-                              className={`inline-flex px-2.5 py-1 rounded-full border text-xs font-semibold ${getStatusStyle(
-                                status
-                              )}`}
-                            >
-                              {status}
-                            </span>
-
-                          </td>
-
-                          {/* ACTION */}
-
-                          <td className="px-5 py-4">
-
-                            <div className="flex justify-end items-center gap-2 relative">
-
-                              {/* REQUEST */}
-
-                              {!latestTesting && (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    requestTesting(
-                                      entity
-                                    )
-                                  }
-                                  className="px-3 py-1.5 text-xs font-semibold text-white bg-black rounded-md hover:bg-gray-800"
-                                >
-                                  Request Testing
-                                </button>
-                              )}
-
-                              {/* VIEW / UPDATE */}
-
-                              {latestTesting && (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    openDetails(
-                                      entity,
-                                      latestTesting
-                                    )
-                                  }
-                                  className="px-3 py-1.5 text-xs font-medium text-gray-700 border border-gray-300 rounded-md hover:bg-gray-100"
-                                >
-                                  {status ===
-                                  "TEST_SUCCESS"
-                                    ? "View Success"
-                                    : status ===
-                                      "TEST_FAILED"
-                                    ? "View Failed"
-                                    : status ===
-                                      "TEST_TERMINATED"
-                                    ? "View Terminated"
-                                    : "View Testing"}
-                                </button>
-                              )}
-
-                              {/* THREE DOT */}
-
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setOpenMenu(
-                                    openMenu ===
-                                      `${entity.source}-${entity.sourceId}`
-                                      ? null
-                                      : `${entity.source}-${entity.sourceId}`
-                                  )
+                              <p className="text-[10px] text-gray-400 mt-1">
+                                DB ID:{" "}
+                                {
+                                  entity.sourceId
                                 }
-                                className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-gray-200 text-gray-600 text-lg"
+                              </p>
+
+                            </td>
+
+                            {/* TYPE */}
+
+                            <td className="px-5 py-4">
+
+                              <span
+                                className={`inline-flex px-2.5 py-1 text-xs font-semibold ${getEntityStyle(
+                                  entity.source
+                                )}`}
                               >
-                                ⋮
-                              </button>
+                                {
+                                  entity.source
+                                }
+                              </span>
 
-                              {/* MENU */}
+                            </td>
 
-                              {openMenu ===
-                                `${entity.source}-${entity.sourceId}` && (
-                                <div className="absolute right-0 top-10 z-30 w-48 bg-white border border-gray-200 rounded-md shadow-lg py-1">
+                            {/* COMPANY */}
 
-                                  {!latestTesting && (
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        requestTesting(
-                                          entity
-                                        )
-                                      }
-                                      className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
-                                    >
-                                      Request Testing
-                                    </button>
-                                  )}
+                            <td className="px-5 py-4">
 
-                                  {latestTesting && (
-                                    <>
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          openDetails(
-                                            entity,
-                                            latestTesting
-                                          )
-                                        }
-                                        className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
-                                      >
-                                        Edit Testing
-                                      </button>
+                              <p className="text-sm font-semibold text-gray-900">
+                                {
+                                  entity.companyName
+                                }
+                              </p>
 
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          openDetails(
-                                            entity,
-                                            latestTesting
-                                          )
-                                        }
-                                        className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
-                                      >
-                                        View Details
-                                      </button>
-
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          handleDeleteTesting(
-                                            latestTesting
-                                          )
-                                        }
-                                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                                      >
-                                        Delete Testing
-                                      </button>
-                                    </>
-                                  )}
-
-                                </div>
+                              {entity.companyId && (
+                                <p className="text-xs text-gray-400 mt-1">
+                                  Company ID:{" "}
+                                  {
+                                    entity.companyId
+                                  }
+                                </p>
                               )}
 
-                            </div>
+                            </td>
 
-                          </td>
+                            {/* MANAGER */}
 
-                        </tr>
-                      );
-                    }
-                  )}
+                            <td className="px-5 py-4">
 
-              </tbody>
+                              <span className="text-sm text-gray-700">
+                                {
+                                  entity.accountManager
+                                }
+                              </span>
 
-            </table>
+                            </td>
 
-          </div>
+                            {/* STATUS */}
+
+                            <td className="px-5 py-4">
+
+                              <span
+                                className={`inline-flex px-2.5 py-1 rounded-full border text-xs font-semibold ${getStatusStyle(
+                                  status
+                                )}`}
+                              >
+                                {
+                                  status
+                                }
+                              </span>
+
+                            </td>
+
+                            {/* ACTION */}
+
+                            <td className="px-5 py-4">
+
+                              <div className="flex justify-end items-center gap-2 relative">
+
+                                {/* REQUEST */}
+
+                                {!latestTesting && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      requestTesting(
+                                        entity
+                                      )
+                                    }
+                                    className="px-3 py-1.5 text-xs font-semibold text-white bg-black rounded-md hover:bg-gray-800"
+                                  >
+                                    Request Testing
+                                  </button>
+                                )}
+
+                                {/* VIEW / UPDATE */}
+
+                                {latestTesting && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      openDetails(
+                                        entity,
+                                        latestTesting
+                                      )
+                                    }
+                                    className="px-3 py-1.5 text-xs font-medium text-gray-700 border border-gray-300 rounded-md hover:bg-gray-100"
+                                  >
+                                    {status ===
+                                    "TEST_SUCCESS"
+                                      ? "View Success"
+                                      : status ===
+                                        "TEST_FAILED"
+                                      ? "View Failed"
+                                      : status ===
+                                        "TEST_TERMINATED"
+                                      ? "View Terminated"
+                                      : "View Testing"}
+                                  </button>
+                                )}
+
+                                {/* THREE DOT */}
+
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setOpenMenu(
+                                      openMenu ===
+                                        `${entity.source}-${entity.sourceId}`
+                                        ? null
+                                        : `${entity.source}-${entity.sourceId}`
+                                    )
+                                  }
+                                  className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-gray-200 text-gray-600 text-lg"
+                                >
+                                  ⋮
+                                </button>
+
+                                {/* MENU */}
+
+                                {openMenu ===
+                                  `${entity.source}-${entity.sourceId}` && (
+                                  <div className="absolute right-0 top-10 z-30 w-48 bg-white border border-gray-200 rounded-md shadow-lg py-1">
+
+                                    {!latestTesting && (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          requestTesting(
+                                            entity
+                                          )
+                                        }
+                                        className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
+                                      >
+                                        Request Testing
+                                      </button>
+                                    )}
+
+                                    {latestTesting && (
+                                      <>
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            openDetails(
+                                              entity,
+                                              latestTesting
+                                            )
+                                          }
+                                          className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
+                                        >
+                                          Edit Testing
+                                        </button>
+
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            openDetails(
+                                              entity,
+                                              latestTesting
+                                            )
+                                          }
+                                          className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
+                                        >
+                                          View Details
+                                        </button>
+
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            handleDeleteTesting(
+                                              latestTesting
+                                            )
+                                          }
+                                          className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                                        >
+                                          Delete Testing
+                                        </button>
+                                      </>
+                                    )}
+
+                                  </div>
+                                )}
+
+                              </div>
+
+                            </td>
+
+                          </tr>
+                        );
+                      }
+                    )}
+
+                </tbody>
+
+              </table>
+
+            </div>
+          )}
 
         </div>
 
@@ -1682,9 +2138,6 @@ function Testing() {
                       selectedEntity.companyId
                     }
                   />
-
-                  {/* QUALITY DESCRIPTION
-                      ONLY HERE - NOT TABLE */}
 
                   <InfoItem
                     label="Quality Description"
@@ -1943,9 +2396,7 @@ function Testing() {
                   </div>
                 )}
 
-                {/* =================================================
-                    CURRENT STATUS
-                ================================================= */}
+                {/* CURRENT STATUS */}
 
                 {selectedTesting && (
                   <div className="mb-6 p-4 border border-gray-200 rounded-md bg-gray-50">
