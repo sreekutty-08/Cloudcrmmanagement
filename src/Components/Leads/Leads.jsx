@@ -527,52 +527,52 @@ function Leads() {
   };
 
   // =========================================================
-  // STATUS STYLE
+  // STATUS TEXT STYLE
   // =========================================================
 
-  const getStatusStyle = (status) => {
+  const getStatusTextStyle = (status) => {
     switch (
       String(status || "").toUpperCase()
     ) {
       case "ACTIVE":
-        return "bg-green-50 text-green-700 border-green-200";
+        return "text-green-600";
 
       case "PENDING":
-        return "bg-yellow-50 text-yellow-700 border-yellow-200";
+        return "text-yellow-600";
 
       case "CONVERTED":
-        return "bg-blue-50 text-blue-700 border-blue-200";
+        return "text-blue-600";
 
       case "CLOSED":
-        return "bg-red-50 text-red-700 border-red-200";
+        return "text-red-600";
 
       case "INACTIVE":
-        return "bg-gray-50 text-gray-600 border-gray-200";
+        return "text-gray-500";
 
       default:
-        return "bg-gray-50 text-gray-600 border-gray-200";
+        return "text-gray-500";
     }
   };
 
   // =========================================================
-  // TYPE STYLE
+  // TYPE TEXT STYLE
   // =========================================================
 
-  const getTypeStyle = (type) => {
+  const getTypeTextStyle = (type) => {
     switch (
       String(type || "").toUpperCase()
     ) {
       case "CUSTOMER":
-        return "bg-green-50 text-green-700 border-green-200";
+        return "text-green-600";
 
       case "VENDOR":
-        return "bg-purple-50 text-purple-700 border-purple-200";
+        return "text-purple-600";
 
       case "LEAD":
-        return "bg-blue-50 text-blue-700 border-blue-200";
+        return "text-blue-600";
 
       default:
-        return "bg-gray-50 text-gray-600 border-gray-200";
+        return "text-gray-500";
     }
   };
 
@@ -796,42 +796,42 @@ function Leads() {
             TABLE
         ================================================= */}
 
-        <div className="bg-white border border-gray-300 rounded-md overflow-hidden">
+        <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
 
           <div className="overflow-x-auto">
 
-            <table className="w-full border-collapse">
+            <table className="w-full min-w-[950px]">
 
-              <thead>
+              <thead className="bg-gray-50 border-b border-gray-200">
 
-                <tr className="bg-[#f1f3f5] border-b-2 border-gray-400">
+                <tr>
 
-                  <th className="border-r border-gray-300 px-4 py-3 text-left text-xs font-bold uppercase text-gray-700">
+                  <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
                     Lead ID
                   </th>
 
-                  <th className="border-r border-gray-300 px-4 py-3 text-left text-xs font-bold uppercase text-gray-700">
+                  <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
                     Company
                   </th>
 
-                  <th className="border-r border-gray-300 px-4 py-3 text-left text-xs font-bold uppercase text-gray-700">
+                  <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
                     Account Manager
                   </th>
 
-                  <th className="border-r border-gray-300 px-4 py-3 text-left text-xs font-bold uppercase text-gray-700">
+                  <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
                     Type
                   </th>
 
-                  <th className="border-r border-gray-300 px-4 py-3 text-left text-xs font-bold uppercase text-gray-700">
+                  <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
                     Source
                   </th>
 
-                  <th className="border-r border-gray-300 px-4 py-3 text-left text-xs font-bold uppercase text-gray-700">
+                  <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
                     Status
                   </th>
 
-                  <th className="px-4 py-3 text-center text-xs font-bold uppercase text-gray-700">
-                    Open
+                  <th className="text-right px-5 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                    Action
                   </th>
 
                 </tr>
@@ -847,9 +847,15 @@ function Leads() {
 
                     <td
                       colSpan="7"
-                      className="px-4 py-12 text-center text-sm text-gray-500"
+                      className="px-5 py-10 text-center"
                     >
-                      Loading actual Supabase data...
+
+                      <div className="w-7 h-7 border-2 border-gray-300 border-t-black rounded-full animate-spin mx-auto mb-3" />
+
+                      <p className="text-sm text-gray-500">
+                        Loading actual Supabase data...
+                      </p>
+
                     </td>
 
                   </tr>
@@ -863,7 +869,7 @@ function Leads() {
 
                       <td
                         colSpan="7"
-                        className="px-4 py-12 text-center"
+                        className="px-5 py-10 text-center"
                       >
 
                         <p className="text-sm font-medium text-gray-700">
@@ -885,7 +891,7 @@ function Leads() {
 
                 {!loading &&
                   filteredLeads.map(
-                    (lead, index) => {
+                    (lead) => {
 
                       const company =
                         companyMap[
@@ -905,23 +911,19 @@ function Leads() {
                       return (
                         <tr
                           key={lead.id}
-                          className={`border-b border-gray-300 ${
-                            index % 2 === 0
-                              ? "bg-white"
-                              : "bg-[#fafafa]"
-                          } hover:bg-blue-50`}
+                          className="border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition"
                         >
 
                           {/* LEAD ID */}
 
-                          <td className="border-r border-gray-300 px-4 py-3">
+                          <td className="px-5 py-3">
 
-                            <p className="font-semibold text-sm text-gray-900">
+                            <span className="font-medium text-sm text-gray-900">
                               {lead?.lead_id ||
                                 "—"}
-                            </p>
+                            </span>
 
-                            <p className="text-[10px] text-gray-400 mt-1">
+                            <p className="text-[10px] text-gray-400 mt-0.5">
                               DB ID:{" "}
                               {lead?.id}
                             </p>
@@ -930,14 +932,14 @@ function Leads() {
 
                           {/* COMPANY */}
 
-                          <td className="border-r border-gray-300 px-4 py-3">
+                          <td className="px-5 py-3">
 
-                            <p className="font-medium text-sm text-gray-900">
+                            <p className="font-semibold text-sm text-gray-900">
                               {company?.company_name ||
                                 "—"}
                             </p>
 
-                            <p className="text-xs text-gray-400 mt-1">
+                            <p className="text-xs text-gray-400 mt-0.5">
                               {company?.company_id ||
                                 "—"}
                             </p>
@@ -946,19 +948,21 @@ function Leads() {
 
                           {/* ACCOUNT MANAGER */}
 
-                          <td className="border-r border-gray-300 px-4 py-3 text-sm text-gray-700">
+                          <td className="px-5 py-3">
 
-                            {company?.account_manager ||
-                              "—"}
+                            <span className="text-sm text-gray-700">
+                              {company?.account_manager ||
+                                "—"}
+                            </span>
 
                           </td>
 
                           {/* TYPE */}
 
-                          <td className="border-r border-gray-300 px-4 py-3">
+                          <td className="px-5 py-3">
 
                             <span
-                              className={`inline-flex px-2.5 py-1 border rounded text-xs font-semibold ${getTypeStyle(
+                              className={`text-xs font-semibold ${getTypeTextStyle(
                                 type
                               )}`}
                             >
@@ -969,19 +973,21 @@ function Leads() {
 
                           {/* SOURCE */}
 
-                          <td className="border-r border-gray-300 px-4 py-3 text-sm text-gray-700">
+                          <td className="px-5 py-3">
 
-                            {lead?.lead_source ||
-                              "—"}
+                            <span className="text-sm text-gray-700">
+                              {lead?.lead_source ||
+                                "—"}
+                            </span>
 
                           </td>
 
                           {/* STATUS */}
 
-                          <td className="border-r border-gray-300 px-4 py-3">
+                          <td className="px-5 py-3">
 
                             <span
-                              className={`inline-flex px-2.5 py-1 border rounded text-xs font-semibold ${getStatusStyle(
+                              className={`text-xs font-semibold ${getStatusTextStyle(
                                 status
                               )}`}
                             >
@@ -992,19 +998,26 @@ function Leads() {
 
                           {/* OPEN */}
 
-                          <td className="px-4 py-3 text-center">
+                          <td className="px-5 py-3">
 
-                            <button
-                              type="button"
-                              onClick={() =>
-                                openLeadDetails(
-                                  lead
-                                )
-                              }
-                              className="px-4 py-1.5 bg-black text-white text-xs font-semibold rounded hover:bg-gray-800"
-                            >
-                              Open
-                            </button>
+                            <div className="flex justify-end">
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  openLeadDetails(
+                                    lead
+                                  )
+                                }
+                                className="inline-flex items-center gap-2 px-4 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-100 transition"
+                              >
+                                Open
+                                <span>
+                                  →
+                                </span>
+                              </button>
+
+                            </div>
 
                           </td>
 

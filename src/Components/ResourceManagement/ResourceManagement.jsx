@@ -1353,100 +1353,83 @@ function Vendorresource() {
             FILTERS
         ===================================================== */}
 
-        <div className="flex items-center flex-wrap gap-5 mb-5">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">
-              Country
-            </span>
+        {/* ====================================================
+    FILTER TAB
+===================================================== */}
 
-            <select
-              value={countryFilter}
-              onChange={(e) =>
-                setCountryFilter(
-                  e.target.value
-                )
-              }
-              className="h-9 min-w-[105px] px-3 border border-gray-300 rounded-md bg-white text-sm"
-            >
-              <option value="All">
-                All
-              </option>
+<div className="mb-5">
+  <div className="bg-white border border-gray-300 rounded-lg p-2">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
 
-              {countries.map(
-                (country) => (
-                  <option
-                    key={country}
-                    value={country}
-                  >
-                    {country}
-                  </option>
-                )
-              )}
-            </select>
-          </div>
+      {/* COUNTRY */}
+      <select
+        value={countryFilter}
+        onChange={(e) =>
+          setCountryFilter(e.target.value)
+        }
+        className="w-full h-12 px-4 border border-gray-300 rounded-md bg-white text-base text-gray-900 outline-none focus:border-gray-500"
+      >
+        <option value="All">
+          All Countries
+        </option>
 
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">
-              Route Type
-            </span>
+        {countries.map((country) => (
+          <option
+            key={country}
+            value={country}
+          >
+            {country}
+          </option>
+        ))}
+      </select>
 
-            <select
-              value={routeFilter}
-              onChange={(e) =>
-                setRouteFilter(
-                  e.target.value
-                )
-              }
-              className="h-9 min-w-[125px] px-3 border border-gray-300 rounded-md bg-white text-sm"
-            >
-              <option value="All">
-                All
-              </option>
+      {/* ROUTE TYPE */}
+      <select
+        value={routeFilter}
+        onChange={(e) =>
+          setRouteFilter(e.target.value)
+        }
+        className="w-full h-12 px-4 border border-gray-300 rounded-md bg-white text-base text-gray-900 outline-none focus:border-gray-500"
+      >
+        <option value="All">
+          All Route Types
+        </option>
 
-              {routeTypes.map(
-                (route) => (
-                  <option
-                    key={route}
-                    value={route}
-                  >
-                    {route}
-                  </option>
-                )
-              )}
-            </select>
-          </div>
+        {routeTypes.map((route) => (
+          <option
+            key={route}
+            value={route}
+          >
+            {route}
+          </option>
+        ))}
+      </select>
 
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">
-              Manager
-            </span>
+      {/* MANAGER */}
+      <select
+        value={managerFilter}
+        onChange={(e) =>
+          setManagerFilter(e.target.value)
+        }
+        className="w-full h-12 px-4 border border-gray-300 rounded-md bg-white text-base text-gray-900 outline-none focus:border-gray-500"
+      >
+        <option value="All">
+          All Managers
+        </option>
 
-            <select
-              value={managerFilter}
-              onChange={(e) =>
-                setManagerFilter(
-                  e.target.value
-                )
-              }
-              className="h-9 min-w-[110px] px-3 border border-gray-300 rounded-md bg-white text-sm"
-            >
-              <option value="All">
-                All
-              </option>
+        {managers.map((manager) => (
+          <option
+            key={manager}
+            value={manager}
+          >
+            {manager}
+          </option>
+        ))}
+      </select>
 
-              {managers.map(
-                (manager) => (
-                  <option
-                    key={manager}
-                    value={manager}
-                  >
-                    {manager}
-                  </option>
-                )
-              )}
-            </select>
-          </div>
-        </div>
+    </div>
+  </div>
+</div>
 
         {/* ====================================================
             SUMMARY
@@ -1454,7 +1437,7 @@ function Vendorresource() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
 
-          <div className="bg-white border border-gray-200 rounded-lg px-4 py-4">
+          <div className="bg-white border border-gray-200 square-lg px-4 py-4">
             <p className="text-sm text-gray-700">
               Total Vendors
             </p>
@@ -1464,7 +1447,7 @@ function Vendorresource() {
             </p>
           </div>
 
-          <div className="bg-white border border-gray-200 rounded-lg px-4 py-4">
+          <div className="bg-white border border-gray-200 square-lg px-4 py-4">
             <p className="text-sm text-gray-700">
               Total Capacity
             </p>
@@ -1474,7 +1457,7 @@ function Vendorresource() {
             </p>
           </div>
 
-          <div className="bg-white border border-gray-200 rounded-lg px-4 py-4">
+          <div className="bg-white border border-gray-200 square-lg px-4 py-4">
             <p className="text-sm text-gray-700">
               Avg Buying Rate
             </p>
@@ -1484,9 +1467,9 @@ function Vendorresource() {
             </p>
           </div>
 
-          <div className="bg-white border border-gray-200 rounded-lg px-4 py-4">
+          <div className="bg-white border border-gray-200 square-lg px-4 py-4">
             <p className="text-sm text-gray-700">
-              Vendor Health Warnings
+              Vendor Warnings
             </p>
 
             <p
@@ -1535,7 +1518,7 @@ function Vendorresource() {
 
                   <div className="mb-2">
                     <h3 className="text-base font-medium text-gray-800">
-                      Quality Group:{" "}
+                      {" "}
                       <span className="font-normal">
                         {
                           qualityDescription
@@ -1546,7 +1529,7 @@ function Vendorresource() {
 
                   {/* TABLE */}
 
-                  <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-visible">
+                  <div className="bg-white border border-gray-200 square-lg  overflow-visible">
 
                     {/* IMPORTANT:
                         Do not put the three-dot menu

@@ -520,7 +520,7 @@ function Vendors() {
         statusFilter === "All" ||
         String(vendor.status || "")
           .toUpperCase() ===
-          statusFilter.toUpperCase();
+        statusFilter.toUpperCase();
 
       return (
         matchesSearch &&
@@ -560,14 +560,14 @@ function Vendors() {
         .toUpperCase();
 
     if (normalized === "ACTIVE") {
-      return "bg-emerald-50 text-emerald-700 border-emerald-200";
+      return "text-emerald-700";
     }
 
     if (normalized === "INACTIVE") {
-      return "bg-gray-100 text-gray-600 border-gray-200";
+      return "text-gray-600";
     }
 
-    return "bg-gray-100 text-gray-600 border-gray-200";
+    return "text-gray-600";
   };
 
   // ============================================================
@@ -592,6 +592,7 @@ function Vendors() {
             }
             className="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100 transition"
           >
+
             <svg
               xmlns="http://www.w3.org/2000/svg"
               className="w-5 h-5"
@@ -600,17 +601,21 @@ function Vendors() {
               stroke="currentColor"
               strokeWidth="2"
             >
+
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 d="M15 19l-7-7 7-7"
               />
+
             </svg>
+
           </button>
 
           <div className="h-6 w-px bg-gray-200" />
 
           <div>
+
             <p className="text-sm font-semibold text-gray-900">
               CloudCRM
             </p>
@@ -618,6 +623,7 @@ function Vendors() {
             <p className="text-xs text-gray-400">
               Vendor Management
             </p>
+
           </div>
 
         </div>
@@ -677,11 +683,13 @@ function Vendors() {
             onClick={openModal}
             className="inline-flex items-center justify-center gap-2 bg-black text-white px-5 py-3 rounded-xl text-sm font-semibold hover:bg-gray-800 transition shadow-sm"
           >
+
             <span className="text-xl leading-none">
               +
             </span>
 
             Add Vendor
+
           </button>
 
         </div>
@@ -710,7 +718,7 @@ function Vendors() {
               Active Vendors
             </p>
 
-            <p className="text-2xl font-bold text-emerald-600 mt-2">
+            <p className="text-2xl font-bold text-black mt-2">
               {activeVendors}
             </p>
 
@@ -749,11 +757,13 @@ function Vendors() {
                 </h2>
 
                 <p className="text-xs text-gray-400 mt-1">
+
                   {filteredVendors.length} vendor
                   {filteredVendors.length === 1
                     ? ""
                     : "s"}{" "}
                   displayed
+
                 </p>
 
               </div>
@@ -770,11 +780,13 @@ function Vendors() {
                     stroke="currentColor"
                     strokeWidth="2"
                   >
+
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       d="m21 21-4.35-4.35m1.35-5.15a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z"
                     />
+
                   </svg>
 
                   <input
@@ -800,6 +812,7 @@ function Vendors() {
                   }
                   className="px-4 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-sm outline-none"
                 >
+
                   <option value="All">
                     All Status
                   </option>
@@ -811,6 +824,7 @@ function Vendors() {
                   <option value="INACTIVE">
                     Inactive
                   </option>
+
                 </select>
 
               </div>
@@ -856,11 +870,14 @@ function Vendors() {
               <tbody className="divide-y divide-gray-100">
 
                 {loading && (
+
                   <tr>
+
                     <td
                       colSpan="5"
                       className="px-6 py-16 text-center"
                     >
+
                       <div className="flex flex-col items-center">
 
                         <div className="w-8 h-8 border-4 border-gray-200 border-t-black rounded-full animate-spin mb-3" />
@@ -870,71 +887,82 @@ function Vendors() {
                         </p>
 
                       </div>
+
                     </td>
+
                   </tr>
+
                 )}
 
                 {!loading &&
                   filteredVendors.length === 0 && (
+
                     <tr>
+
                       <td
                         colSpan="5"
                         className="px-6 py-16 text-center"
                       >
+
                         <p className="text-sm font-medium text-gray-700">
+
                           {search ||
                           statusFilter !== "All"
                             ? "No vendors match your search or filter."
                             : "No vendors found."}
+
                         </p>
+
                       </td>
+
                     </tr>
+
                   )}
 
                 {!loading &&
                   filteredVendors.map(
                     (vendor) => (
+
                       <tr
                         key={vendor.id}
                         className="hover:bg-gray-50 transition"
                       >
 
-                        <td className="px-6 py-5">
+                        {/* CHANGED ONLY: py-5 → py-3 */}
+
+                        <td className="px-6 py-3">
+
                           <span className="font-medium text-sm text-gray-700">
                             {vendor.vendor_id || "-"}
                           </span>
+
                         </td>
 
-                        <td className="px-6 py-5">
+                        <td className="px-6 py-3">
+
                           <span className="font-semibold text-sm text-gray-900">
                             {vendor.company_name || "-"}
                           </span>
+
                         </td>
 
-                        <td className="px-6 py-5">
+                        <td className="px-6 py-3">
+
                           <span className="text-sm text-gray-600">
                             {vendor.account_manager || "-"}
                           </span>
+
                         </td>
 
-                        <td className="px-6 py-5">
+                        {/* STATUS CHANGED TO TEXT ONLY */}
+
+                        <td className="px-6 py-3">
 
                           <span
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold ${getStatusStyle(
+                            className={`text-xs font-semibold ${getStatusStyle(
                               vendor.status
                             )}`}
                           >
-
-                            <span
-                              className={`w-1.5 h-1.5 rounded-full ${
-                                String(
-                                  vendor.status || ""
-                                ).toUpperCase() ===
-                                "ACTIVE"
-                                  ? "bg-emerald-500"
-                                  : "bg-gray-400"
-                              }`}
-                            />
 
                             {vendor.status ||
                               "Unknown"}
@@ -943,7 +971,7 @@ function Vendors() {
 
                         </td>
 
-                        <td className="px-6 py-5">
+                        <td className="px-6 py-3">
 
                           <div className="flex justify-end">
 
@@ -958,6 +986,7 @@ function Vendors() {
                               }
                               className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-medium text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-900 hover:text-white hover:border-gray-900 transition"
                             >
+
                               Open
 
                               <svg
@@ -968,12 +997,15 @@ function Vendors() {
                                 stroke="currentColor"
                                 strokeWidth="2"
                               >
+
                                 <path
                                   strokeLinecap="round"
                                   strokeLinejoin="round"
                                   d="M9 5l7 7-7 7"
                                 />
+
                               </svg>
+
                             </button>
 
                           </div>
@@ -981,6 +1013,7 @@ function Vendors() {
                         </td>
 
                       </tr>
+
                     )
                   )}
 
@@ -999,6 +1032,7 @@ function Vendors() {
       ====================================================== */}
 
       {showModal && (
+
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
 
           <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl max-h-[92vh] overflow-hidden">
@@ -1016,6 +1050,7 @@ function Vendors() {
                   </div>
 
                   <div>
+
                     <h2 className="text-xl font-bold text-gray-900">
                       Add Vendor
                     </h2>
@@ -1023,6 +1058,7 @@ function Vendors() {
                     <p className="text-sm text-gray-500 mt-0.5">
                       Create a new vendor account.
                     </p>
+
                   </div>
 
                 </div>
@@ -1318,6 +1354,7 @@ You can also separate IPs with commas.`}
                       onChange={handleChange}
                       className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 outline-none focus:bg-white focus:border-black focus:ring-1 focus:ring-black transition"
                     >
+
                       <option value="ACTIVE">
                         Active
                       </option>
@@ -1325,6 +1362,7 @@ You can also separate IPs with commas.`}
                       <option value="INACTIVE">
                         Inactive
                       </option>
+
                     </select>
 
                   </div>
@@ -1357,9 +1395,11 @@ You can also separate IPs with commas.`}
                     disabled={saving}
                     className="px-6 py-3 bg-black text-white rounded-xl font-semibold text-sm hover:bg-gray-800 transition disabled:opacity-50 min-w-[130px]"
                   >
+
                     {saving
                       ? "Saving..."
                       : "Save Vendor"}
+
                   </button>
 
                 </div>
@@ -1371,6 +1411,7 @@ You can also separate IPs with commas.`}
           </div>
 
         </div>
+
       )}
 
       {/* ======================================================
@@ -1378,6 +1419,7 @@ You can also separate IPs with commas.`}
       ====================================================== */}
 
       {showErrorModal && (
+
         <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
 
           <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
@@ -1411,13 +1453,16 @@ You can also separate IPs with commas.`}
               <div className="bg-red-50 border border-red-200 rounded-xl p-4">
 
                 <p className="text-sm font-medium text-red-800 break-words">
+
                   {loadError?.message ||
                     "Unable to complete the operation."}
+
                 </p>
 
               </div>
 
               {loadError?.code && (
+
                 <div className="mt-4">
 
                   <p className="text-xs font-semibold text-gray-500 uppercase">
@@ -1429,9 +1474,11 @@ You can also separate IPs with commas.`}
                   </p>
 
                 </div>
+
               )}
 
               {loadError?.details && (
+
                 <div className="mt-4">
 
                   <p className="text-xs font-semibold text-gray-500 uppercase">
@@ -1443,9 +1490,11 @@ You can also separate IPs with commas.`}
                   </p>
 
                 </div>
+
               )}
 
               {loadError?.hint && (
+
                 <div className="mt-4">
 
                   <p className="text-xs font-semibold text-gray-500 uppercase">
@@ -1457,6 +1506,7 @@ You can also separate IPs with commas.`}
                   </p>
 
                 </div>
+
               )}
 
               <div className="flex justify-end gap-3 mt-6">
@@ -1487,6 +1537,7 @@ You can also separate IPs with commas.`}
           </div>
 
         </div>
+
       )}
 
     </div>

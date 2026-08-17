@@ -1401,137 +1401,107 @@ function Clientresource() {
                 FILTERS
             ================================================== */}
 
-            <div className="flex items-center flex-wrap gap-5 mb-5">
-              {/* COUNTRY */}
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">
-                  Country
-                </span>
+            {/* ====================================================
+    FILTERS
+===================================================== */}
 
-                <select
-                  value={countryFilter}
-                  onChange={(event) =>
-                    setCountryFilter(
-                      event.target.value
-                    )
-                  }
-                  className="h-9 min-w-[105px] px-3 border border-gray-300 rounded-md bg-white text-sm outline-none"
-                >
-                  <option value="All">
-                    All
-                  </option>
+<div className="mb-5">
+  <div className="bg-white border border-gray-300 rounded-lg p-2">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
 
-                  {countries.map(
-                    (country) => (
-                      <option
-                        key={country}
-                        value={country}
-                      >
-                        {country}
-                      </option>
-                    )
-                  )}
-                </select>
-              </div>
+      {/* COUNTRY */}
+      <select
+        value={countryFilter}
+        onChange={(event) =>
+          setCountryFilter(event.target.value)
+        }
+        className="w-full h-12 px-4 border border-gray-300 rounded-md bg-white text-base text-gray-900 outline-none focus:border-gray-500"
+      >
+        <option value="All">
+          All Countries
+        </option>
 
-              {/* ROUTE */}
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">
-                  Route Type
-                </span>
+        {countries.map((country) => (
+          <option
+            key={country}
+            value={country}
+          >
+            {country}
+          </option>
+        ))}
+      </select>
 
-                <select
-                  value={routeFilter}
-                  onChange={(event) =>
-                    setRouteFilter(
-                      event.target.value
-                    )
-                  }
-                  className="h-9 min-w-[125px] px-3 border border-gray-300 rounded-md bg-white text-sm outline-none"
-                >
-                  <option value="All">
-                    All
-                  </option>
+      {/* ROUTE TYPE */}
+      <select
+        value={routeFilter}
+        onChange={(event) =>
+          setRouteFilter(event.target.value)
+        }
+        className="w-full h-12 px-4 border border-gray-300 rounded-md bg-white text-base text-gray-900 outline-none focus:border-gray-500"
+      >
+        <option value="All">
+          All Route Types
+        </option>
 
-                  {routeTypes.map(
-                    (route) => (
-                      <option
-                        key={route}
-                        value={route}
-                      >
-                        {route}
-                      </option>
-                    )
-                  )}
-                </select>
-              </div>
+        {routeTypes.map((route) => (
+          <option
+            key={route}
+            value={route}
+          >
+            {route}
+          </option>
+        ))}
+      </select>
 
-              {/* MANAGER */}
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">
-                  Manager
-                </span>
+      {/* MANAGER */}
+      <select
+        value={managerFilter}
+        onChange={(event) =>
+          setManagerFilter(event.target.value)
+        }
+        className="w-full h-12 px-4 border border-gray-300 rounded-md bg-white text-base text-gray-900 outline-none focus:border-gray-500"
+      >
+        <option value="All">
+          All Managers
+        </option>
 
-                <select
-                  value={managerFilter}
-                  onChange={(event) =>
-                    setManagerFilter(
-                      event.target.value
-                    )
-                  }
-                  className="h-9 min-w-[110px] px-3 border border-gray-300 rounded-md bg-white text-sm outline-none"
-                >
-                  <option value="All">
-                    All
-                  </option>
+        {managers.map((manager) => (
+          <option
+            key={manager}
+            value={manager}
+          >
+            {manager}
+          </option>
+        ))}
+      </select>
 
-                  {managers.map(
-                    (manager) => (
-                      <option
-                        key={manager}
-                        value={manager}
-                      >
-                        {manager}
-                      </option>
-                    )
-                  )}
-                </select>
-              </div>
+      {/* QUALITY DESCRIPTION */}
+      <select
+        value={qualityDescriptionFilter}
+        onChange={(event) =>
+          setQualityDescriptionFilter(
+            event.target.value
+          )
+        }
+        className="w-full h-12 px-4 border border-gray-300 rounded-md bg-white text-base text-gray-900 outline-none focus:border-gray-500"
+      >
+        <option value="All">
+          All Quality Descriptions
+        </option>
 
-              {/* QUALITY */}
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600 whitespace-nowrap">
-                  Quality Description
-                </span>
+        {qualityDescriptions.map((quality) => (
+          <option
+            key={quality}
+            value={quality}
+          >
+            {quality}
+          </option>
+        ))}
+      </select>
 
-                <select
-                  value={
-                    qualityDescriptionFilter
-                  }
-                  onChange={(event) =>
-                    setQualityDescriptionFilter(
-                      event.target.value
-                    )
-                  }
-                  className="h-9 min-w-[250px] px-3 border border-gray-300 rounded-md bg-white text-sm outline-none"
-                >
-                  <option value="All">
-                    All
-                  </option>
-
-                  {qualityDescriptions.map(
-                    (quality) => (
-                      <option
-                        key={quality}
-                        value={quality}
-                      >
-                        {quality}
-                      </option>
-                    )
-                  )}
-                </select>
-              </div>
-            </div>
+    </div>
+  </div>
+</div>
 
             {/* ==================================================
                 SUMMARY
@@ -1606,7 +1576,7 @@ function Clientresource() {
                   return (
                     <div key={group}>
                       <h3 className="text-base font-medium text-gray-800 mb-2">
-                        Quality Group:{" "}
+                      {" "}
                         <span className="font-normal">
                           {group}
                         </span>
@@ -1832,7 +1802,7 @@ function Clientresource() {
                               Status
                             </th>
 
-                            <th></th>
+                            <th><th className="w-12 px-2"></th></th>
                           </tr>
                         </thead>
 

@@ -486,22 +486,7 @@ function Customers() {
   // STATUS STYLE
   // ============================================================
 
-  const getStatusStyle = (
-    status
-  ) => {
-    const normalized =
-      String(
-        status || ""
-      ).toUpperCase();
-
-    if (
-      normalized === "ACTIVE"
-    ) {
-      return "bg-emerald-50 text-emerald-700 border-emerald-200";
-    }
-
-    return "bg-gray-100 text-gray-600 border-gray-200";
-  };
+  
 
   // ============================================================
   // ERROR POPUP
@@ -646,275 +631,274 @@ function Customers() {
             TABLE
         ==================================================== */}
 
-        <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-
-          <div className="px-6 py-5 border-b border-gray-200">
-
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-
-              <div>
-
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Customer Overview
-                </h2>
-
-                <p className="text-sm text-gray-500 mt-1">
-                  View and manage customer accounts.
-                </p>
-
-              </div>
-
-              <div className="text-sm text-gray-500">
-
-                Showing{" "}
-
-                <span className="font-semibold text-gray-900">
-                  {filteredCustomers.length}
-                </span>
-
-                {" "}of{" "}
-
-                <span className="font-semibold text-gray-900">
-                  {customers.length}
-                </span>
-
-                {" "}customers
-
-              </div>
-
-            </div>
-
-          </div>
-
-          {/* SEARCH */}
-
-          <div className="px-6 py-5 bg-gray-50/70 border-b border-gray-200">
-
-            <div className="flex flex-col lg:flex-row gap-3">
-
-              <div className="flex-1">
-
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) =>
-                    setSearch(
-                      e.target.value
-                    )
-                  }
-                  placeholder="Search customer, company, account manager..."
-                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg outline-none focus:border-black focus:ring-1 focus:ring-black text-sm"
-                />
-
-              </div>
-
-              <div className="lg:w-48">
-
-                <select
-                  value={statusFilter}
-                  onChange={(e) =>
-                    setStatusFilter(
-                      e.target.value
-                    )
-                  }
-                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg outline-none focus:border-black focus:ring-1 focus:ring-black text-sm"
-                >
-
-                  <option value="All">
-                    All Status
-                  </option>
-
-                  <option value="ACTIVE">
-                    Active
-                  </option>
-
-                  <option value="INACTIVE">
-                    Inactive
-                  </option>
-
-                </select>
-
-              </div>
-
-            </div>
-
-          </div>
-
-          {/* TABLE */}
-
-          <div className="overflow-x-auto">
-
-            <table className="w-full min-w-[850px]">
-
-              <thead className="bg-gray-50 border-b border-gray-200">
-
-                <tr>
-
-                  <th className="text-left px-6 py-4 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                    Customer ID
-                  </th>
-
-                  <th className="text-left px-6 py-4 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                    Company Name
-                  </th>
-
-                  <th className="text-left px-6 py-4 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                    Account Manager
-                  </th>
-
-                  <th className="text-left px-6 py-4 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                    Status
-                  </th>
-
-                  <th className="text-right px-6 py-4 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                    Action
-                  </th>
-
-                </tr>
-
-              </thead>
-
-              <tbody>
-
-                {loading ? (
-
-                  <tr>
-
-                    <td
-                      colSpan="5"
-                      className="px-6 py-16 text-center"
-                    >
-
-                      <div className="w-8 h-8 border-2 border-gray-300 border-t-black rounded-full animate-spin mx-auto mb-4" />
-
-                      <p className="text-sm text-gray-500">
-                        Loading customers...
-                      </p>
-
-                    </td>
-
-                  </tr>
-
-                ) : filteredCustomers.length === 0 ? (
-
-                  <tr>
-
-                    <td
-                      colSpan="5"
-                      className="px-6 py-16 text-center"
-                    >
-
-                      <h3 className="font-semibold text-gray-900">
-                        No customers found
-                      </h3>
-
-                      <p className="text-sm text-gray-500 mt-1">
-                        Try changing your search or status filter.
-                      </p>
-
-                    </td>
-
-                  </tr>
-
-                ) : (
-
-                  filteredCustomers.map(
-                    (customer) => (
-
-                      <tr
-                        key={customer.id}
-                        className="border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition"
-                      >
-
-                        <td className="px-6 py-5">
-
-                          <span className="font-medium text-gray-900">
-                            {customer.customer_id ||
-                              "-"}
-                          </span>
-
-                        </td>
-
-                        <td className="px-6 py-5">
-
-                          <p className="font-semibold text-gray-900">
-                            {customer.company_name ||
-                              "-"}
-                          </p>
-
-                        </td>
-
-                        <td className="px-6 py-5">
-
-                          <span className="text-sm text-gray-700">
-                            {customer.account_manager ||
-                              "-"}
-                          </span>
-
-                        </td>
-
-                        <td className="px-6 py-5">
-
-                          <span
-                            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold ${getStatusStyle(
-                              customer.status
-                            )}`}
-                          >
-
-                            <span
-                              className={`w-1.5 h-1.5 rounded-full ${
-                                String(
-                                  customer.status ||
-                                    ""
-                                ).toUpperCase() ===
-                                "ACTIVE"
-                                  ? "bg-emerald-500"
-                                  : "bg-gray-400"
-                              }`}
-                            />
-
-                            {customer.status ||
-                              "Unknown"}
-
-                          </span>
-
-                        </td>
-
-                        <td className="px-6 py-5">
-
-                          <div className="flex justify-end">
-
-                            <Link
-                              to={`/customers/${encodeURIComponent(
-                                customer.customer_id
-                              )}`}
-                              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 transition"
-                            >
-                              Open
-                              <span>
-                                →
-                              </span>
-                            </Link>
-
-                          </div>
-
-                        </td>
-
-                      </tr>
-
-                    )
-                  )
-
-                )}
-
-              </tbody>
-
-            </table>
-
-          </div>
-
-        </div>
-
+        <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden"> 
+ 
+  <div className="px-6 py-5 border-b border-gray-200"> 
+ 
+    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4"> 
+ 
+      <div> 
+ 
+        <h2 className="text-lg font-semibold text-gray-900"> 
+          Customer Overview 
+        </h2> 
+ 
+        <p className="text-sm text-gray-500 mt-1"> 
+          View and manage customer accounts. 
+        </p> 
+ 
+      </div> 
+ 
+      <div className="text-sm text-gray-500"> 
+ 
+        Showing{" "} 
+ 
+        <span className="font-semibold text-gray-900"> 
+          {filteredCustomers.length} 
+        </span> 
+ 
+        {" "}of{" "} 
+ 
+        <span className="font-semibold text-gray-900"> 
+          {customers.length} 
+        </span> 
+ 
+        {" "}customers 
+ 
+      </div> 
+ 
+    </div> 
+ 
+  </div> 
+ 
+  {/* SEARCH */} 
+ 
+  <div className="px-6 py-5 bg-gray-50/70 border-b border-gray-200"> 
+ 
+    <div className="flex flex-col lg:flex-row gap-3"> 
+ 
+      <div className="flex-1"> 
+ 
+        <input 
+          type="text" 
+          value={search} 
+          onChange={(e) => 
+            setSearch( 
+              e.target.value 
+            ) 
+          } 
+          placeholder="Search customer, company, account manager..." 
+          className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg outline-none focus:border-black focus:ring-1 focus:ring-black text-sm" 
+        /> 
+ 
+      </div> 
+ 
+      <div className="lg:w-48"> 
+ 
+        <select 
+          value={statusFilter} 
+          onChange={(e) => 
+            setStatusFilter( 
+              e.target.value 
+            ) 
+          } 
+          className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg outline-none focus:border-black focus:ring-1 focus:ring-black text-sm" 
+        > 
+ 
+          <option value="All"> 
+            All Status 
+          </option> 
+ 
+          <option value="ACTIVE"> 
+            Active 
+          </option> 
+ 
+          <option value="INACTIVE"> 
+            Inactive 
+          </option> 
+ 
+        </select> 
+ 
+      </div> 
+ 
+    </div> 
+ 
+  </div> 
+ 
+  {/* TABLE */} 
+ 
+  <div className="overflow-x-auto"> 
+ 
+    <table className="w-full min-w-[850px]"> 
+ 
+      <thead className="bg-gray-50 border-b border-gray-200"> 
+ 
+        <tr> 
+ 
+          <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500"> 
+            Customer ID 
+          </th> 
+ 
+          <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500"> 
+            Company Name 
+          </th> 
+ 
+          <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500"> 
+            Account Manager 
+          </th> 
+ 
+          <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500"> 
+            Status 
+          </th> 
+ 
+          <th className="text-right px-6 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500"> 
+            Action 
+          </th> 
+ 
+        </tr> 
+ 
+      </thead> 
+ 
+      <tbody> 
+ 
+        {loading ? ( 
+ 
+          <tr> 
+ 
+            <td 
+              colSpan="5" 
+              className="px-6 py-10 text-center" 
+            > 
+ 
+              <div className="w-8 h-8 border-2 border-gray-300 border-t-black rounded-full animate-spin mx-auto mb-4" /> 
+ 
+              <p className="text-sm text-gray-500"> 
+                Loading customers... 
+              </p> 
+ 
+            </td> 
+ 
+          </tr> 
+ 
+        ) : filteredCustomers.length === 0 ? ( 
+ 
+          <tr> 
+ 
+            <td 
+              colSpan="5" 
+              className="px-6 py-10 text-center" 
+            > 
+ 
+              <h3 className="font-semibold text-gray-900"> 
+                No customers found 
+              </h3> 
+ 
+              <p className="text-sm text-gray-500 mt-1"> 
+                Try changing your search or status filter. 
+              </p> 
+ 
+            </td> 
+ 
+          </tr> 
+ 
+        ) : ( 
+ 
+          filteredCustomers.map( 
+            (customer) => ( 
+ 
+              <tr 
+                key={customer.id} 
+                className="border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition" 
+              > 
+ 
+                <td className="px-6 py-3"> 
+ 
+                  <span className="font-medium text-gray-900"> 
+                    {customer.customer_id || 
+                      "-"} 
+                  </span> 
+ 
+                </td> 
+ 
+                <td className="px-6 py-3"> 
+ 
+                  <p className="font-semibold text-gray-900"> 
+                    {customer.company_name || 
+                      "-"} 
+                  </p> 
+ 
+                </td> 
+ 
+                <td className="px-6 py-3"> 
+ 
+                  <span className="text-sm text-gray-700"> 
+                    {customer.account_manager || 
+                      "-"} 
+                  </span> 
+ 
+                </td> 
+ 
+                <td className="px-6 py-3"> 
+ 
+                  <span 
+                    className={`text-xs font-semibold ${
+                      String( 
+                        customer.status || 
+                          "" 
+                      ).toUpperCase() === 
+                      "ACTIVE" 
+                        ? "text-emerald-600" 
+                        : String( 
+                            customer.status || 
+                              "" 
+                          ).toUpperCase() === 
+                          "INACTIVE" 
+                          ? "text-red-600" 
+                          : "text-gray-500"
+                    }`} 
+                  > 
+ 
+                    {customer.status || 
+                      "Unknown"} 
+ 
+                  </span> 
+ 
+                </td> 
+ 
+                <td className="px-6 py-3"> 
+ 
+                  <div className="flex justify-end"> 
+ 
+                    <Link 
+                      to={`/customers/${encodeURIComponent( 
+                        customer.customer_id 
+                      )}`} 
+                      className="inline-flex items-center gap-2 px-4 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 transition" 
+                    > 
+                      Open 
+                      <span> 
+                        → 
+                      </span> 
+                    </Link> 
+ 
+                  </div> 
+ 
+                </td> 
+ 
+              </tr> 
+ 
+            ) 
+          ) 
+ 
+        )} 
+ 
+      </tbody> 
+ 
+    </table> 
+ 
+  </div> 
+ 
+</div>
       </main>
 
       {/* ======================================================
