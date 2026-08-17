@@ -6,14 +6,15 @@ function Sidebar() {
       name: "Dashboard",
       path: "/dashboard",
     },
+     {
+      name: "Leads",
+      path: "/leads",
+    },
     {
       name: "Customers",
       path: "/customers",
     },
-    {
-      name: "Leads",
-      path: "/leads",
-    },
+   
     {
       name: "Vendors",
       path: "/vendors",
