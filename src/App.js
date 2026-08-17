@@ -18,6 +18,7 @@ import ResourceManagement from "./Components/ResourceManagement/ResourceManageme
 import Clientresource from "./Components/ResourceManagement/Clientresource";
 
 import RouteSearching from "./Components/RouteSearching/RouteSearching";
+import Testing from "./Components/Testing/Testing";
 
 
 /* =========================================================
@@ -116,8 +117,12 @@ function CRMLayout() {
           <Route
             path="/resource-management/clients"
             element={<Clientresource />}
+            
           />
-
+<Route
+            path="/testing"
+            element={<Testing />}
+          />
 
           {/* =================================================
               ROUTE SEARCHING

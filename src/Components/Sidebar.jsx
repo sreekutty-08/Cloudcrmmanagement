@@ -6,7 +6,7 @@ function Sidebar() {
       name: "Dashboard",
       path: "/dashboard",
     },
-     {
+    {
       name: "Leads",
       path: "/leads",
     },
@@ -14,7 +14,6 @@ function Sidebar() {
       name: "Customers",
       path: "/customers",
     },
-   
     {
       name: "Vendors",
       path: "/vendors",
@@ -22,6 +21,10 @@ function Sidebar() {
     {
       name: "Resource Management",
       path: "/resource-management",
+    },
+    {
+      name: "Testing",
+      path: "/testing",
     },
     {
       name: "All Reports",
@@ -87,7 +90,6 @@ function Sidebar() {
       </div>
 
     </aside>
-    
   );
 }
 
