@@ -1,4 +1,5 @@
 import React, {
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -36,7 +37,7 @@ function Vendorresource() {
 
   const [search, setSearch] = useState("");
   const [countryFilter, setCountryFilter] = useState("All");
-  const [routeFilter, setRouteFilter] = useState("All");
+  const [qualityFilter, setQualityFilter] = useState("All");
   const [managerFilter, setManagerFilter] = useState("All");
 
   // ============================================================
@@ -120,121 +121,115 @@ function Vendorresource() {
   // FETCH EVERYTHING
   // ============================================================
 
-  const fetchVendors = async () => {
+  const fetchVendors = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
 
       // ----------------------------------------------------------
-      // RESOURCE DATA
+      // FETCH ALL REQUIRED TABLES IN PARALLEL
+      // This reduces the waiting time because Supabase requests
+      // are not executed one after another.
       // ----------------------------------------------------------
 
-      const {
-        data: resourceData,
-        error: resourceError,
-      } = await supabase
-        .from(RESOURCE_TABLE)
-        .select(`
-          id,
-          vendor_id,
-          buying_rate,
-          ports,
-          credit,
-          credit_currency,
-          support_quality,
-          quality_description_id,
-          route_type,
-          billing_cycle,
-          status,
-          created_at,
-          updated_at
-        `)
-        .order("id", { ascending: false });
+      const [
+        resourceResult,
+        vendorResult,
+        companyResult,
+        qualityResult,
+      ] = await Promise.all([
+        supabase
+          .from(RESOURCE_TABLE)
+          .select(`
+            id,
+            vendor_id,
+            buying_rate,
+            ports,
+            credit,
+            credit_currency,
+            support_quality,
+            quality_description_id,
+            route_type,
+            billing_cycle,
+            status,
+            created_at,
+            updated_at
+          `)
+          .order("id", { ascending: false }),
 
-      if (resourceError) {
-        throw new Error(resourceError.message);
+        supabase
+          .from(VENDOR_TABLE)
+          .select(`
+            id,
+            company_id,
+            vendor_id,
+            company_name,
+            account_manager,
+            country,
+            website,
+            contact_person,
+            phone,
+            email,
+            ip_addresses,
+            status
+          `),
+
+        supabase
+          .from(COMPANY_TABLE)
+          .select(`
+            id,
+            company_id,
+            company_name,
+            country,
+            email,
+            contact_person,
+            phone,
+            account_manager,
+            status,
+            company_description,
+            website,
+            ip_addresses
+          `),
+
+        supabase
+          .from(QUALITY_TABLE)
+          .select(`
+            id,
+            description,
+            country,
+            status,
+            created_at,
+            updated_at
+          `)
+          .order("id", { ascending: true }),
+      ]);
+
+      // ----------------------------------------------------------
+      // CHECK ERRORS
+      // ----------------------------------------------------------
+
+      if (resourceResult.error) {
+        throw new Error(resourceResult.error.message);
       }
 
-      // ----------------------------------------------------------
-      // VENDORS
-      // ----------------------------------------------------------
-
-      const {
-        data: vendorData,
-        error: vendorError,
-      } = await supabase
-        .from(VENDOR_TABLE)
-        .select(`
-          id,
-          company_id,
-          vendor_id,
-          company_name,
-          account_manager,
-          country,
-          website,
-          contact_person,
-          phone,
-          email,
-          ip_addresses,
-          status
-        `);
-
-      if (vendorError) {
-        throw new Error(vendorError.message);
+      if (vendorResult.error) {
+        throw new Error(vendorResult.error.message);
       }
 
-      // ----------------------------------------------------------
-      // COMPANIES
-      // ----------------------------------------------------------
-
-      const {
-        data: companyData,
-        error: companyError,
-      } = await supabase
-        .from(COMPANY_TABLE)
-        .select(`
-          id,
-          company_id,
-          company_name,
-          country,
-          email,
-          contact_person,
-          phone,
-          account_manager,
-          status,
-          company_description,
-          website,
-          ip_addresses
-        `);
-
-      if (companyError) {
-        throw new Error(companyError.message);
+      if (companyResult.error) {
+        throw new Error(companyResult.error.message);
       }
 
-      // ----------------------------------------------------------
-      // QUALITY DESCRIPTIONS
-      // ----------------------------------------------------------
-
-      const {
-        data: qualityData,
-        error: qualityError,
-      } = await supabase
-        .from(QUALITY_TABLE)
-        .select(`
-          id,
-          description,
-          country,
-          status,
-          created_at,
-          updated_at
-        `)
-        .order("id", { ascending: true });
-
-      if (qualityError) {
-        throw new Error(qualityError.message);
+      if (qualityResult.error) {
+        throw new Error(qualityResult.error.message);
       }
 
-      setQualityDescriptions(qualityData || []);
+      const resourceData = resourceResult.data || [];
+      const vendorData = vendorResult.data || [];
+      const companyData = companyResult.data || [];
+      const qualityData = qualityResult.data || [];
+
+      setQualityDescriptions(qualityData);
 
       // ----------------------------------------------------------
       // MAP DATA
@@ -242,19 +237,19 @@ function Vendorresource() {
 
       const vendorsMap = new Map();
 
-      (vendorData || []).forEach((vendor) => {
+      vendorData.forEach((vendor) => {
         vendorsMap.set(Number(vendor.id), vendor);
       });
 
       const companiesMap = new Map();
 
-      (companyData || []).forEach((company) => {
+      companyData.forEach((company) => {
         companiesMap.set(Number(company.id), company);
       });
 
       const qualityMap = new Map();
 
-      (qualityData || []).forEach((quality) => {
+      qualityData.forEach((quality) => {
         qualityMap.set(Number(quality.id), quality);
       });
 
@@ -262,123 +257,121 @@ function Vendorresource() {
       // FORMAT DATA
       // ----------------------------------------------------------
 
-      const formattedData = (resourceData || []).map(
-        (resource) => {
-          const vendor = vendorsMap.get(
-            Number(resource.vendor_id)
-          );
+      const formattedData = resourceData.map((resource) => {
+        const vendor = vendorsMap.get(
+          Number(resource.vendor_id)
+        );
 
-          const company = vendor
-            ? companiesMap.get(
-                Number(vendor.company_id)
-              )
-            : null;
+        const company = vendor
+          ? companiesMap.get(
+              Number(vendor.company_id)
+            )
+          : null;
 
-          const quality = resource.quality_description_id
-            ? qualityMap.get(
-                Number(resource.quality_description_id)
-              )
-            : null;
+        const quality = resource.quality_description_id
+          ? qualityMap.get(
+              Number(resource.quality_description_id)
+            )
+          : null;
 
-          const companyName =
-            company?.company_name ||
-            vendor?.company_name ||
-            "";
+        const companyName =
+          company?.company_name ||
+          vendor?.company_name ||
+          "";
 
-          const accountManager =
-            company?.account_manager ||
-            vendor?.account_manager ||
-            "";
+        const accountManager =
+          company?.account_manager ||
+          vendor?.account_manager ||
+          "";
 
-          return {
-            id: resource.id,
+        return {
+          id: resource.id,
 
-            vendorDbId: resource.vendor_id,
+          vendorDbId: resource.vendor_id,
 
-            vendorId: vendor?.vendor_id || "",
+          vendorId: vendor?.vendor_id || "",
 
-            companyId:
-              vendor?.company_id || null,
+          companyId:
+            vendor?.company_id || null,
 
-            company: companyName,
+          company: companyName,
 
-            accountManager,
+          accountManager,
 
-            buyingRate:
-              resource.buying_rate ?? "",
+          buyingRate:
+            resource.buying_rate ?? "",
 
-            ports:
-              resource.ports ?? 0,
+          ports:
+            resource.ports ?? 0,
 
-            credit:
-              resource.credit ?? "",
+          credit:
+            resource.credit ?? "",
 
-            creditCurrency:
-              resource.credit_currency || "",
+          creditCurrency:
+            resource.credit_currency || "",
 
-            billingCycle:
-              resource.billing_cycle || "",
+          billingCycle:
+            resource.billing_cycle || "",
 
-            supportQuality:
-              resource.support_quality || "GOOD",
+          supportQuality:
+            resource.support_quality || "GOOD",
 
-            routeType:
-              resource.route_type || "",
+          routeType:
+            resource.route_type || "",
 
-            qualityDescriptionId:
-              resource.quality_description_id || null,
+          qualityDescriptionId:
+            resource.quality_description_id || null,
 
-            qualityDescription:
-              quality?.description || "",
+          qualityDescription:
+            quality?.description || "",
 
-            qualityCountry:
-              quality?.country || "",
+          qualityCountry:
+            quality?.country || "",
 
-            status:
-              resource.status || "ACTIVE",
+          status:
+            resource.status || "ACTIVE",
 
-            vendorCountry:
-              vendor?.country ||
-              company?.country ||
-              "",
+          vendorCountry:
+            vendor?.country ||
+            company?.country ||
+            "",
 
-            website:
-              vendor?.website ||
-              company?.website ||
-              "",
+          website:
+            vendor?.website ||
+            company?.website ||
+            "",
 
-            contactPerson:
-              vendor?.contact_person ||
-              company?.contact_person ||
-              "",
+          contactPerson:
+            vendor?.contact_person ||
+            company?.contact_person ||
+            "",
 
-            phone:
-              vendor?.phone ||
-              company?.phone ||
-              "",
+          phone:
+            vendor?.phone ||
+            company?.phone ||
+            "",
 
-            email:
-              vendor?.email ||
-              company?.email ||
-              "",
+          email:
+            vendor?.email ||
+            company?.email ||
+            "",
 
-            ipAddresses:
-              vendor?.ip_addresses ||
-              company?.ip_addresses ||
-              [],
+          ipAddresses:
+            vendor?.ip_addresses ||
+            company?.ip_addresses ||
+            [],
 
-            companyDescription:
-              company?.company_description ||
-              "",
+          companyDescription:
+            company?.company_description ||
+            "",
 
-            createdAt:
-              resource.created_at || "",
+          createdAt:
+            resource.created_at || "",
 
-            updatedAt:
-              resource.updated_at || "",
-          };
-        }
-      );
+          updatedAt:
+            resource.updated_at || "",
+        };
+      });
 
       setVendors(formattedData);
     } catch (err) {
@@ -391,7 +384,7 @@ function Vendorresource() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // ============================================================
   // INITIAL LOAD
@@ -399,7 +392,7 @@ function Vendorresource() {
 
   useEffect(() => {
     fetchVendors();
-  }, []);
+  }, [fetchVendors]);
 
   // ============================================================
   // FILTER OPTIONS
@@ -425,11 +418,15 @@ function Vendorresource() {
     ];
   }, [vendors]);
 
-  const routeTypes = useMemo(() => {
+  // ============================================================
+  // QUALITY DESCRIPTION FILTER OPTIONS
+  // ============================================================
+
+  const qualityDescriptionsFilter = useMemo(() => {
     return [
       ...new Set(
         vendors
-          .map((item) => item.routeType)
+          .map((item) => item.qualityDescription)
           .filter(Boolean)
       ),
     ];
@@ -447,16 +444,16 @@ function Vendorresource() {
     return vendors.filter((vendor) => {
       const matchesSearch =
         !searchValue ||
-        vendor.company
+        (vendor.company || "")
           .toLowerCase()
           .includes(searchValue) ||
-        vendor.vendorId
+        (vendor.vendorId || "")
           .toLowerCase()
           .includes(searchValue) ||
-        vendor.accountManager
+        (vendor.accountManager || "")
           .toLowerCase()
           .includes(searchValue) ||
-        vendor.qualityDescription
+        (vendor.qualityDescription || "")
           .toLowerCase()
           .includes(searchValue);
 
@@ -464,9 +461,9 @@ function Vendorresource() {
         countryFilter === "All" ||
         vendor.qualityCountry === countryFilter;
 
-      const matchesRoute =
-        routeFilter === "All" ||
-        vendor.routeType === routeFilter;
+      const matchesQuality =
+        qualityFilter === "All" ||
+        vendor.qualityDescription === qualityFilter;
 
       const matchesManager =
         managerFilter === "All" ||
@@ -475,7 +472,7 @@ function Vendorresource() {
       return (
         matchesSearch &&
         matchesCountry &&
-        matchesRoute &&
+        matchesQuality &&
         matchesManager
       );
     });
@@ -483,7 +480,7 @@ function Vendorresource() {
     vendors,
     search,
     countryFilter,
-    routeFilter,
+    qualityFilter,
     managerFilter,
   ]);
 
@@ -513,20 +510,24 @@ function Vendorresource() {
   // SUMMARY
   // ============================================================
 
-  const totalVendors = new Set(
-    filteredVendors
-      .map((item) => item.vendorId)
-      .filter(Boolean)
-  ).size;
+  const totalVendors = useMemo(() => {
+    return new Set(
+      filteredVendors
+        .map((item) => item.vendorId)
+        .filter(Boolean)
+    ).size;
+  }, [filteredVendors]);
 
-  const totalCapacity = filteredVendors.reduce(
-    (total, item) =>
-      total + Number(item.ports || 0),
-    0
-  );
+  const totalCapacity = useMemo(() => {
+    return filteredVendors.reduce(
+      (total, item) =>
+        total + Number(item.ports || 0),
+      0
+    );
+  }, [filteredVendors]);
 
-  const avgBuyingRate =
-    filteredVendors.length > 0
+  const avgBuyingRate = useMemo(() => {
+    return filteredVendors.length > 0
       ? (
           filteredVendors.reduce(
             (total, item) =>
@@ -536,13 +537,15 @@ function Vendorresource() {
           ) / filteredVendors.length
         ).toFixed(4)
       : "0.0000";
+  }, [filteredVendors]);
 
-  const healthWarnings =
-    filteredVendors.filter(
+  const healthWarnings = useMemo(() => {
+    return filteredVendors.filter(
       (item) =>
         item.supportQuality === "POOR" ||
         item.status === "INACTIVE"
     ).length;
+  }, [filteredVendors]);
 
   // ============================================================
   // THREE DOT MENU POSITION
@@ -570,7 +573,6 @@ function Vendorresource() {
 
     let openUp = false;
 
-    // Prevent right-side overflow
     if (left < 8) {
       left = 8;
     }
@@ -585,8 +587,6 @@ function Vendorresource() {
         8;
     }
 
-    // If there isn't enough room below,
-    // open the menu upward.
     if (
       top + menuHeight >
       window.innerHeight - 8
@@ -599,7 +599,6 @@ function Vendorresource() {
       openUp = true;
     }
 
-    // Prevent top overflow
     if (top < 8) {
       top = 8;
       openUp = false;
@@ -714,6 +713,7 @@ function Vendorresource() {
       if (vendor.company_id) {
         const {
           data: company,
+          error: companyError,
         } = await supabase
           .from(COMPANY_TABLE)
           .select(`
@@ -726,6 +726,10 @@ function Vendorresource() {
             vendor.company_id
           )
           .maybeSingle();
+
+        if (companyError) {
+          console.error(companyError);
+        }
 
         if (company) {
           companyName =
@@ -1292,7 +1296,9 @@ function Vendorresource() {
             <button
               onClick={() => {
                 setShowAddVendor(true);
-                setNewVendor(emptyVendor);
+                setNewVendor({
+                  ...emptyVendor,
+                });
                 setQualityMode("SELECT");
                 setVendorLookupMessage("");
                 setError("");
@@ -1353,83 +1359,100 @@ function Vendorresource() {
             FILTERS
         ===================================================== */}
 
-        {/* ====================================================
-    FILTER TAB
-===================================================== */}
+        <div className="mb-5">
+          <div className="bg-white border border-gray-300 rounded-lg p-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
 
-<div className="mb-5">
-  <div className="bg-white border border-gray-300 rounded-lg p-2">
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {/* COUNTRY */}
 
-      {/* COUNTRY */}
-      <select
-        value={countryFilter}
-        onChange={(e) =>
-          setCountryFilter(e.target.value)
-        }
-        className="w-full h-12 px-4 border border-gray-300 rounded-md bg-white text-base text-gray-900 outline-none focus:border-gray-500"
-      >
-        <option value="All">
-          All Countries
-        </option>
+              <select
+                value={countryFilter}
+                onChange={(e) =>
+                  setCountryFilter(
+                    e.target.value
+                  )
+                }
+                className="w-full h-12 px-4 border border-gray-300 rounded-md bg-white text-base text-gray-900 outline-none focus:border-gray-500"
+              >
+                <option value="All">
+                  All Countries
+                </option>
 
-        {countries.map((country) => (
-          <option
-            key={country}
-            value={country}
-          >
-            {country}
-          </option>
-        ))}
-      </select>
+                {countries.map(
+                  (country) => (
+                    <option
+                      key={country}
+                      value={country}
+                    >
+                      {country}
+                    </option>
+                  )
+                )}
+              </select>
 
-      {/* ROUTE TYPE */}
-      <select
-        value={routeFilter}
-        onChange={(e) =>
-          setRouteFilter(e.target.value)
-        }
-        className="w-full h-12 px-4 border border-gray-300 rounded-md bg-white text-base text-gray-900 outline-none focus:border-gray-500"
-      >
-        <option value="All">
-          All Route Types
-        </option>
+              {/* QUALITY DESCRIPTION */}
 
-        {routeTypes.map((route) => (
-          <option
-            key={route}
-            value={route}
-          >
-            {route}
-          </option>
-        ))}
-      </select>
+              <select
+                value={qualityFilter}
+                onChange={(e) =>
+                  setQualityFilter(
+                    e.target.value
+                  )
+                }
+                className="w-full h-12 px-4 border border-gray-300 rounded-md bg-white text-base text-gray-900 outline-none focus:border-gray-500"
+              >
+                <option value="All">
+                  All Quality Descriptions
+                </option>
 
-      {/* MANAGER */}
-      <select
-        value={managerFilter}
-        onChange={(e) =>
-          setManagerFilter(e.target.value)
-        }
-        className="w-full h-12 px-4 border border-gray-300 rounded-md bg-white text-base text-gray-900 outline-none focus:border-gray-500"
-      >
-        <option value="All">
-          All Managers
-        </option>
+                {qualityDescriptionsFilter.map(
+                  (qualityDescription) => (
+                    <option
+                      key={
+                        qualityDescription
+                      }
+                      value={
+                        qualityDescription
+                      }
+                    >
+                      {
+                        qualityDescription
+                      }
+                    </option>
+                  )
+                )}
+              </select>
 
-        {managers.map((manager) => (
-          <option
-            key={manager}
-            value={manager}
-          >
-            {manager}
-          </option>
-        ))}
-      </select>
+              {/* MANAGER */}
 
-    </div>
-  </div>
-</div>
+              <select
+                value={managerFilter}
+                onChange={(e) =>
+                  setManagerFilter(
+                    e.target.value
+                  )
+                }
+                className="w-full h-12 px-4 border border-gray-300 rounded-md bg-white text-base text-gray-900 outline-none focus:border-gray-500"
+              >
+                <option value="All">
+                  All Managers
+                </option>
+
+                {managers.map(
+                  (manager) => (
+                    <option
+                      key={manager}
+                      value={manager}
+                    >
+                      {manager}
+                    </option>
+                  )
+                )}
+              </select>
+
+            </div>
+          </div>
+        </div>
 
         {/* ====================================================
             SUMMARY
@@ -1482,6 +1505,7 @@ function Vendorresource() {
               {healthWarnings}
             </p>
           </div>
+
         </div>
 
         {/* ====================================================
@@ -1490,9 +1514,15 @@ function Vendorresource() {
 
         {loading ? (
           <div className="bg-white border border-gray-200 rounded-lg px-5 py-12 text-center">
-            <p className="text-sm text-gray-500">
-              Loading vendor resources...
-            </p>
+            <div className="flex flex-col items-center justify-center">
+
+              <div className="w-7 h-7 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin mb-3"></div>
+
+              <p className="text-sm text-gray-500">
+                Loading vendor resources...
+              </p>
+
+            </div>
           </div>
         ) : groupedVendors.length === 0 ? (
           <div className="bg-white border border-gray-200 rounded-lg px-5 py-12 text-center">
@@ -1518,7 +1548,6 @@ function Vendorresource() {
 
                   <div className="mb-2">
                     <h3 className="text-base font-medium text-gray-800">
-                      {" "}
                       <span className="font-normal">
                         {
                           qualityDescription
@@ -1529,12 +1558,7 @@ function Vendorresource() {
 
                   {/* TABLE */}
 
-                  <div className="bg-white border border-gray-200 square-lg  overflow-visible">
-
-                    {/* IMPORTANT:
-                        Do not put the three-dot menu
-                        inside this overflow container.
-                    */}
+                  <div className="bg-white border border-gray-200 square-lg overflow-visible">
 
                     <div className="overflow-x-auto rounded-lg">
 
@@ -1745,7 +1769,6 @@ function Vendorresource() {
 
       {/* ======================================================
           THREE DOT MENU
-          PORTAL = WILL NEVER BE CLIPPED BY TABLE
       ======================================================= */}
 
       {openMenu !== null &&
@@ -1760,9 +1783,8 @@ function Vendorresource() {
               e.stopPropagation()
             }
           >
-            <div
-              className="w-[150px] bg-white border border-gray-200 rounded-md shadow-[0_4px_12px_rgba(0,0,0,0.12)] overflow-hidden"
-            >
+            <div className="w-[150px] bg-white border border-gray-200 rounded-md shadow-[0_4px_12px_rgba(0,0,0,0.12)] overflow-hidden">
+
               <button
                 type="button"
                 onClick={() => {
@@ -1804,6 +1826,7 @@ function Vendorresource() {
               >
                 Edit
               </button>
+
             </div>
           </div>,
           document.body
@@ -1826,7 +1849,9 @@ function Vendorresource() {
               e.stopPropagation()
             }
           >
+
             <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+
               <div>
                 <h2 className="text-lg font-medium">
                   Add Vendor Resource
@@ -1845,6 +1870,7 @@ function Vendorresource() {
               >
                 ×
               </button>
+
             </div>
 
             <form
@@ -1857,6 +1883,7 @@ function Vendorresource() {
               {/* VENDOR ID */}
 
               <div className="mb-5">
+
                 <label className="block text-sm text-gray-700 mb-1.5">
                   Vendor ID
                 </label>
@@ -1897,11 +1924,13 @@ function Vendorresource() {
                       }
                     </p>
                   )}
+
               </div>
 
               {/* COMPANY DETAILS */}
 
               <div className="bg-gray-50 border border-gray-200 rounded-md p-4 mb-5">
+
                 <h3 className="text-sm font-medium mb-3">
                   Company Details
                 </h3>
@@ -2181,9 +2210,11 @@ function Vendorresource() {
                     <option>
                       GOOD
                     </option>
+
                     <option>
                       MEDIUM
                     </option>
+
                     <option>
                       POOR
                     </option>
@@ -2211,11 +2242,13 @@ function Vendorresource() {
                     <option>
                       ACTIVE
                     </option>
+
                     <option>
                       INACTIVE
                     </option>
                   </select>
                 </FormField>
+
               </div>
 
               {/* BUTTONS */}
@@ -2246,6 +2279,7 @@ function Vendorresource() {
                 </button>
 
               </div>
+
             </form>
           </div>
         </div>
@@ -2270,7 +2304,9 @@ function Vendorresource() {
                 e.stopPropagation()
               }
             >
+
               <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+
                 <div>
                   <h2 className="text-lg font-medium">
                     Vendor Resource Details
@@ -2294,9 +2330,11 @@ function Vendorresource() {
                 >
                   ×
                 </button>
+
               </div>
 
               <div className="p-5">
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
                   <Detail
@@ -2445,6 +2483,7 @@ function Vendorresource() {
                 </div>
 
                 <div className="flex justify-end mt-6">
+
                   <button
                     onClick={() => {
                       setShowViewVendor(
@@ -2458,6 +2497,7 @@ function Vendorresource() {
                   >
                     Close
                   </button>
+
                 </div>
               </div>
             </div>
@@ -2483,6 +2523,7 @@ function Vendorresource() {
                 e.stopPropagation()
               }
             >
+
               <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
 
                 <div>
@@ -2508,6 +2549,7 @@ function Vendorresource() {
                 >
                   ×
                 </button>
+
               </div>
 
               <form
@@ -2516,6 +2558,7 @@ function Vendorresource() {
                 }
                 className="p-5"
               >
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
                   <FormField label="Company">
@@ -2709,9 +2752,11 @@ function Vendorresource() {
                       <option>
                         GOOD
                       </option>
+
                       <option>
                         MEDIUM
                       </option>
+
                       <option>
                         POOR
                       </option>
@@ -2737,6 +2782,7 @@ function Vendorresource() {
                       <option>
                         ACTIVE
                       </option>
+
                       <option>
                         INACTIVE
                       </option>
@@ -2773,6 +2819,7 @@ function Vendorresource() {
                   </button>
 
                 </div>
+
               </form>
             </div>
           </div>
