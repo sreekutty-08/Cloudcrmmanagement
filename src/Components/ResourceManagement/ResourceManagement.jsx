@@ -38,7 +38,6 @@ function Vendorresource() {
   const [countryFilter, setCountryFilter] = useState("All");
   const [routeFilter, setRouteFilter] = useState("All");
   const [managerFilter, setManagerFilter] = useState("All");
-  const [qualityFilter, setQualityFilter] = useState("All");
 
   // ============================================================
   // MODALS
@@ -437,20 +436,6 @@ function Vendorresource() {
   }, [vendors]);
 
   // ============================================================
-  // QUALITY DESCRIPTION FILTER OPTIONS
-  // ============================================================
-
-  const qualityFilters = useMemo(() => {
-    return [
-      ...new Set(
-        vendors
-          .map((item) => item.qualityDescription)
-          .filter(Boolean)
-      ),
-    ];
-  }, [vendors]);
-
-  // ============================================================
   // FILTER DATA
   // ============================================================
 
@@ -487,16 +472,11 @@ function Vendorresource() {
         managerFilter === "All" ||
         vendor.accountManager === managerFilter;
 
-      const matchesQuality =
-        qualityFilter === "All" ||
-        vendor.qualityDescription === qualityFilter;
-
       return (
         matchesSearch &&
         matchesCountry &&
         matchesRoute &&
-        matchesManager &&
-        matchesQuality
+        matchesManager
       );
     });
   }, [
@@ -505,7 +485,6 @@ function Vendorresource() {
     countryFilter,
     routeFilter,
     managerFilter,
-    qualityFilter,
   ]);
 
   // ============================================================
@@ -591,6 +570,7 @@ function Vendorresource() {
 
     let openUp = false;
 
+    // Prevent right-side overflow
     if (left < 8) {
       left = 8;
     }
@@ -605,6 +585,8 @@ function Vendorresource() {
         8;
     }
 
+    // If there isn't enough room below,
+    // open the menu upward.
     if (
       top + menuHeight >
       window.innerHeight - 8
@@ -617,6 +599,7 @@ function Vendorresource() {
       openUp = true;
     }
 
+    // Prevent top overflow
     if (top < 8) {
       top = 8;
       openUp = false;
@@ -1370,105 +1353,83 @@ function Vendorresource() {
             FILTERS
         ===================================================== */}
 
-        <div className="mb-5">
-          <div className="bg-white border border-gray-300 rounded-lg p-2">
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+        {/* ====================================================
+    FILTER TAB
+===================================================== */}
 
-              {/* COUNTRY */}
+<div className="mb-5">
+  <div className="bg-white border border-gray-300 rounded-lg p-2">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
 
-              <select
-                value={countryFilter}
-                onChange={(e) =>
-                  setCountryFilter(e.target.value)
-                }
-                className="w-full h-12 px-4 border border-gray-300 rounded-md bg-white text-base text-gray-900 outline-none focus:border-gray-500"
-              >
-                <option value="All">
-                  All Countries
-                </option>
+      {/* COUNTRY */}
+      <select
+        value={countryFilter}
+        onChange={(e) =>
+          setCountryFilter(e.target.value)
+        }
+        className="w-full h-12 px-4 border border-gray-300 rounded-md bg-white text-base text-gray-900 outline-none focus:border-gray-500"
+      >
+        <option value="All">
+          All Countries
+        </option>
 
-                {countries.map((country) => (
-                  <option
-                    key={country}
-                    value={country}
-                  >
-                    {country}
-                  </option>
-                ))}
-              </select>
+        {countries.map((country) => (
+          <option
+            key={country}
+            value={country}
+          >
+            {country}
+          </option>
+        ))}
+      </select>
 
-              {/* ROUTE TYPE */}
+      {/* ROUTE TYPE */}
+      <select
+        value={routeFilter}
+        onChange={(e) =>
+          setRouteFilter(e.target.value)
+        }
+        className="w-full h-12 px-4 border border-gray-300 rounded-md bg-white text-base text-gray-900 outline-none focus:border-gray-500"
+      >
+        <option value="All">
+          All Route Types
+        </option>
 
-              <select
-                value={routeFilter}
-                onChange={(e) =>
-                  setRouteFilter(e.target.value)
-                }
-                className="w-full h-12 px-4 border border-gray-300 rounded-md bg-white text-base text-gray-900 outline-none focus:border-gray-500"
-              >
-                <option value="All">
-                  All Route Types
-                </option>
+        {routeTypes.map((route) => (
+          <option
+            key={route}
+            value={route}
+          >
+            {route}
+          </option>
+        ))}
+      </select>
 
-                {routeTypes.map((route) => (
-                  <option
-                    key={route}
-                    value={route}
-                  >
-                    {route}
-                  </option>
-                ))}
-              </select>
+      {/* MANAGER */}
+      <select
+        value={managerFilter}
+        onChange={(e) =>
+          setManagerFilter(e.target.value)
+        }
+        className="w-full h-12 px-4 border border-gray-300 rounded-md bg-white text-base text-gray-900 outline-none focus:border-gray-500"
+      >
+        <option value="All">
+          All Managers
+        </option>
 
-              {/* MANAGER */}
+        {managers.map((manager) => (
+          <option
+            key={manager}
+            value={manager}
+          >
+            {manager}
+          </option>
+        ))}
+      </select>
 
-              <select
-                value={managerFilter}
-                onChange={(e) =>
-                  setManagerFilter(e.target.value)
-                }
-                className="w-full h-12 px-4 border border-gray-300 rounded-md bg-white text-base text-gray-900 outline-none focus:border-gray-500"
-              >
-                <option value="All">
-                  All Managers
-                </option>
-
-                {managers.map((manager) => (
-                  <option
-                    key={manager}
-                    value={manager}
-                  >
-                    {manager}
-                  </option>
-                ))}
-              </select>
-
-              {/* QUALITY DESCRIPTION */}
-
-              <select
-                value={qualityFilter}
-                onChange={(e) =>
-                  setQualityFilter(e.target.value)
-                }
-                className="w-full h-12 px-4 border border-gray-300 rounded-md bg-white text-base text-gray-900 outline-none focus:border-gray-500"
-              >
-                <option value="All">
-                  All Quality Descriptions
-                </option>
-
-                {qualityFilters.map((quality) => (
-                  <option
-                    key={quality}
-                    value={quality}
-                  >
-                    {quality}
-                  </option>
-                ))}
-              </select>
-
-            </div>
-          </div>
-        </div>
+    </div>
+  </div>
+</div>
 
         {/* ====================================================
             SUMMARY
@@ -1557,6 +1518,7 @@ function Vendorresource() {
 
                   <div className="mb-2">
                     <h3 className="text-base font-medium text-gray-800">
+                      {" "}
                       <span className="font-normal">
                         {
                           qualityDescription
@@ -1567,7 +1529,12 @@ function Vendorresource() {
 
                   {/* TABLE */}
 
-                  <div className="bg-white border border-gray-200 square-lg overflow-visible">
+                  <div className="bg-white border border-gray-200 square-lg  overflow-visible">
+
+                    {/* IMPORTANT:
+                        Do not put the three-dot menu
+                        inside this overflow container.
+                    */}
 
                     <div className="overflow-x-auto rounded-lg">
 
@@ -1778,6 +1745,7 @@ function Vendorresource() {
 
       {/* ======================================================
           THREE DOT MENU
+          PORTAL = WILL NEVER BE CLIPPED BY TABLE
       ======================================================= */}
 
       {openMenu !== null &&
