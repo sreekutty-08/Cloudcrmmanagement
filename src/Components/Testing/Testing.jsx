@@ -608,25 +608,38 @@ function Testing() {
     ]);
 
   // =========================================================
-  // SELECTED ENTITY ONLY
+  // SELECTED ENTITY ONLY / TESTING REQUESTS
   // =========================================================
 
   const displayedEntities =
     useMemo(() => {
-      if (!selectedEntity) {
-        return [];
+      /*
+       * If an entity has been selected, preserve the
+       * original behavior and show only that entity.
+       *
+       * If no entity has been selected, show only entities
+       * that already have at least one testing request.
+       *
+       * This is the only table-display behavior change.
+       */
+      if (selectedEntity) {
+        return filteredEntities.filter(
+          (entity) =>
+            entity.source ===
+              selectedEntity.source &&
+            String(entity.sourceId) ===
+              String(selectedEntity.sourceId)
+        );
       }
 
       return filteredEntities.filter(
         (entity) =>
-          entity.source ===
-            selectedEntity.source &&
-          String(entity.sourceId) ===
-            String(selectedEntity.sourceId)
+          getLatestTesting(entity)
       );
     }, [
       filteredEntities,
       selectedEntity,
+      getLatestTesting,
     ]);
 
   // =========================================================
@@ -1531,130 +1544,128 @@ function Testing() {
             FILTERS
         ===================================================== */}
 
-        {selectedEntity && (
-          <div className="bg-white border border-gray-300 rounded-md p-3 mb-4">
+        <div className="bg-white border border-gray-300 rounded-md p-3 mb-4">
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
 
-              {/* SEARCH */}
+            {/* SEARCH */}
 
-              <input
-                type="text"
-                value={
-                  search
-                }
-                onChange={(e) =>
-                  setSearch(
-                    e.target.value
-                  )
-                }
-                placeholder="Search ID, company or manager..."
-                className="h-10 px-3 border border-gray-300 rounded-md text-sm outline-none focus:border-black"
-              />
+            <input
+              type="text"
+              value={
+                search
+              }
+              onChange={(e) =>
+                setSearch(
+                  e.target.value
+                )
+              }
+              placeholder="Search ID, company or manager..."
+              className="h-10 px-3 border border-gray-300 rounded-md text-sm outline-none focus:border-black"
+            />
 
-              {/* STATUS */}
+            {/* STATUS */}
 
-              <select
-                value={
-                  statusFilter
-                }
-                onChange={(e) =>
-                  setStatusFilter(
-                    e.target.value
-                  )
-                }
-                className="h-10 px-3 border border-gray-300 rounded-md bg-white text-sm"
-              >
+            <select
+              value={
+                statusFilter
+              }
+              onChange={(e) =>
+                setStatusFilter(
+                  e.target.value
+                )
+              }
+              className="h-10 px-3 border border-gray-300 rounded-md bg-white text-sm"
+            >
 
-                <option value="">
-                  All Testing Status
-                </option>
+              <option value="">
+                All Testing Status
+              </option>
 
-                {TESTING_STATUSES.map(
-                  (status) => (
-                    <option
-                      key={status}
-                      value={status}
-                    >
-                      {status}
-                    </option>
-                  )
-                )}
+              {TESTING_STATUSES.map(
+                (status) => (
+                  <option
+                    key={status}
+                    value={status}
+                  >
+                    {status}
+                  </option>
+                )
+              )}
 
-              </select>
+            </select>
 
-              {/* QUALITY FILTER */}
+            {/* QUALITY FILTER */}
 
-              <select
-                value={
-                  qualityFilter
-                }
-                onChange={(e) =>
-                  setQualityFilter(
-                    e.target.value
-                  )
-                }
-                className="h-10 px-3 border border-gray-300 rounded-md bg-white text-sm"
-              >
+            <select
+              value={
+                qualityFilter
+              }
+              onChange={(e) =>
+                setQualityFilter(
+                  e.target.value
+                )
+              }
+              className="h-10 px-3 border border-gray-300 rounded-md bg-white text-sm"
+            >
 
-                <option value="">
-                  All Quality Descriptions
-                </option>
+              <option value="">
+                All Quality Descriptions
+              </option>
 
-                {qualityDescriptions.map(
-                  (quality) => (
-                    <option
-                      key={
-                        quality.id
-                      }
-                      value={
-                        quality.id
-                      }
-                    >
-                      {
-                        quality.description
-                      }
-                    </option>
-                  )
-                )}
+              {qualityDescriptions.map(
+                (quality) => (
+                  <option
+                    key={
+                      quality.id
+                    }
+                    value={
+                      quality.id
+                    }
+                  >
+                    {
+                      quality.description
+                    }
+                  </option>
+                )
+              )}
 
-              </select>
+            </select>
 
-              {/* ENTITY */}
+            {/* ENTITY */}
 
-              <select
-                value={
-                  entityFilter
-                }
-                onChange={(e) =>
-                  setEntityFilter(
-                    e.target.value
-                  )
-                }
-                className="h-10 px-3 border border-gray-300 rounded-md bg-white text-sm"
-              >
+            <select
+              value={
+                entityFilter
+              }
+              onChange={(e) =>
+                setEntityFilter(
+                  e.target.value
+                )
+              }
+              className="h-10 px-3 border border-gray-300 rounded-md bg-white text-sm"
+            >
 
-                <option value="">
-                  Lead / Customer / Vendor
-                </option>
+              <option value="">
+                Lead / Customer / Vendor
+              </option>
 
-                {ENTITY_TYPES.map(
-                  (type) => (
-                    <option
-                      key={type}
-                      value={type}
-                    >
-                      {type}
-                    </option>
-                  )
-                )}
+              {ENTITY_TYPES.map(
+                (type) => (
+                  <option
+                    key={type}
+                    value={type}
+                  >
+                    {type}
+                  </option>
+                )
+              )}
 
-              </select>
-
-            </div>
+            </select>
 
           </div>
-        )}
+
+        </div>
 
         {/* =====================================================
             TABLE
@@ -1662,43 +1673,66 @@ function Testing() {
 
         <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-visible">
 
-          {!selectedEntity ? (
-            <div className="px-6 py-20 text-center">
+          {loading ? (
+            <div className="overflow-x-auto">
 
-              <div className="w-14 h-14 mx-auto rounded-full bg-gray-100 flex items-center justify-center mb-4">
+              <table className="w-full min-w-[900px]">
 
-                <span className="text-2xl text-gray-500">
-                  +
-                </span>
+                <thead className="bg-gray-50 border-b border-gray-200">
 
-              </div>
+                  <tr>
 
-              <h3 className="text-base font-semibold text-gray-900">
-                No testing record selected
-              </h3>
+                    <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                      ID
+                    </th>
 
-              <p className="text-sm text-gray-500 mt-1 max-w-md mx-auto">
-                Click the{" "}
-                <span className="font-semibold">
-                  Add Testing
-                </span>{" "}
-                button above and enter a Lead,
-                Customer or Vendor ID.
-              </p>
+                    <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                      Type
+                    </th>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setShowAddSelector(
-                    true
-                  );
-                  setEntityIdInput("");
-                  setEntitySearchError("");
-                }}
-                className="mt-5 px-5 py-2.5 bg-black text-white rounded-md text-sm font-semibold hover:bg-gray-800"
-              >
-                + Add Testing
-              </button>
+                    <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                      Company
+                    </th>
+
+                    <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                      Account Manager
+                    </th>
+
+                    <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                      Testing Status
+                    </th>
+
+                    <th className="text-right px-5 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                      Action
+                    </th>
+
+                  </tr>
+
+                </thead>
+
+                <tbody>
+
+                  <tr>
+
+                    <td
+                      colSpan="6"
+                      className="px-5 py-12 text-center"
+                    >
+
+                      <div className="w-7 h-7 border-2 border-gray-300 border-t-black rounded-full animate-spin mx-auto mb-3" />
+
+                      <p className="text-sm text-gray-500">
+                        Loading leads, customers,
+                        vendors and testing...
+                      </p>
+
+                    </td>
+
+                  </tr>
+
+                </tbody>
+
+              </table>
 
             </div>
           ) : (
@@ -1741,30 +1775,6 @@ function Testing() {
 
                 <tbody>
 
-                  {/* LOADING */}
-
-                  {loading && (
-                    <tr>
-
-                      <td
-                        colSpan="6"
-                        className="px-5 py-12 text-center"
-                      >
-
-                        <div className="w-7 h-7 border-2 border-gray-300 border-t-black rounded-full animate-spin mx-auto mb-3" />
-
-                        <p className="text-sm text-gray-500">
-                          Loading leads, customers,
-                          vendors and testing...
-                        </p>
-
-                      </td>
-
-                    </tr>
-                  )}
-
-                  {/* EMPTY */}
-
                   {!loading &&
                     displayedEntities.length ===
                       0 && (
@@ -1780,9 +1790,9 @@ function Testing() {
                           </p>
 
                           <p className="text-xs text-gray-500 mt-1">
-                            Click Request Testing
-                            to create one for this
-                            selected entity.
+                            Click Add Testing
+                            to create one for a
+                            Lead, Customer or Vendor.
                           </p>
 
                         </td>
