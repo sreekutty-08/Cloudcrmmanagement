@@ -1,6 +1,113 @@
 import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { supabase } from "../supabaseClient";
 
 function Dashboard() {
+  // =========================================================
+  // DASHBOARD COUNTS
+  // =========================================================
+
+  const [stats, setStats] = useState({
+    customers: 0,
+    leads: 0,
+    vendors: 0,
+    resources: 0,
+  });
+
+  // =========================================================
+  // FETCH DASHBOARD COUNTS
+  // =========================================================
+
+  useEffect(() => {
+    const fetchDashboardCounts = async () => {
+      try {
+        const [
+          customersResult,
+          leadsResult,
+          vendorsResult,
+          resourcesResult,
+        ] = await Promise.all([
+          supabase
+            .from("customers")
+            .select("id", {
+              count: "exact",
+              head: true,
+            }),
+
+          supabase
+            .from("leads")
+            .select("id", {
+              count: "exact",
+              head: true,
+            }),
+
+          supabase
+            .from("vendors")
+            .select("id", {
+              count: "exact",
+              head: true,
+            }),
+
+          supabase
+            .from("resource_management")
+            .select("id", {
+              count: "exact",
+              head: true,
+            }),
+        ]);
+
+        if (customersResult.error) {
+          console.error(
+            "Customers count error:",
+            customersResult.error
+          );
+        }
+
+        if (leadsResult.error) {
+          console.error(
+            "Leads count error:",
+            leadsResult.error
+          );
+        }
+
+        if (vendorsResult.error) {
+          console.error(
+            "Vendors count error:",
+            vendorsResult.error
+          );
+        }
+
+        if (resourcesResult.error) {
+          console.error(
+            "Resources count error:",
+            resourcesResult.error
+          );
+        }
+
+        setStats({
+          customers:
+            customersResult.count || 0,
+
+          leads:
+            leadsResult.count || 0,
+
+          vendors:
+            vendorsResult.count || 0,
+
+          resources:
+            resourcesResult.count || 0,
+        });
+      } catch (error) {
+        console.error(
+          "Dashboard count fetch error:",
+          error
+        );
+      }
+    };
+
+    fetchDashboardCounts();
+  }, []);
+
   return (
     <div className="min-h-screen bg-gray-100">
 
@@ -87,7 +194,7 @@ function Dashboard() {
                 </p>
 
                 <h3 className="text-3xl font-bold text-gray-900 mt-2">
-                  —
+                  {stats.customers}
                 </h3>
 
                 <p className="text-xs text-gray-400 mt-2">
@@ -121,7 +228,7 @@ function Dashboard() {
                 </p>
 
                 <h3 className="text-3xl font-bold text-gray-900 mt-2">
-                  —
+                  {stats.leads}
                 </h3>
 
                 <p className="text-xs text-gray-400 mt-2">
@@ -155,7 +262,7 @@ function Dashboard() {
                 </p>
 
                 <h3 className="text-3xl font-bold text-gray-900 mt-2">
-                  —
+                  {stats.vendors}
                 </h3>
 
                 <p className="text-xs text-gray-400 mt-2">
@@ -189,7 +296,7 @@ function Dashboard() {
                 </p>
 
                 <h3 className="text-3xl font-bold text-gray-900 mt-2">
-                  —
+                  {stats.resources}
                 </h3>
 
                 <p className="text-xs text-gray-400 mt-2">
