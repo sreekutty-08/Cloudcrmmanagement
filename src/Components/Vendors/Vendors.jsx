@@ -14,6 +14,7 @@ function Vendors() {
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
+  const [accountManagerFilter, setAccountManagerFilter] = useState("All");
 
   const [showModal, setShowModal] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
@@ -33,7 +34,7 @@ function Vendors() {
     contactPerson: "",
     phone: "",
     email: "",
-    ipAddresses: "",
+    ipAddresses: [""],
     description: "",
     vendorStatus: "ACTIVE",
   };
@@ -206,11 +207,68 @@ function Vendors() {
   };
 
   // ============================================================
+  // HANDLE IP ADDRESS CHANGE
+  // ============================================================
+
+  const handleIpChange = (index, value) => {
+    setFormData((previous) => {
+      const updatedIpAddresses = [
+        ...previous.ipAddresses,
+      ];
+
+      updatedIpAddresses[index] = value;
+
+      return {
+        ...previous,
+        ipAddresses: updatedIpAddresses,
+      };
+    });
+  };
+
+  // ============================================================
+  // ADD IP ADDRESS FIELD
+  // ============================================================
+
+  const addIpAddressField = () => {
+    setFormData((previous) => ({
+      ...previous,
+      ipAddresses: [
+        ...previous.ipAddresses,
+        "",
+      ],
+    }));
+  };
+
+  // ============================================================
+  // REMOVE IP ADDRESS FIELD
+  // ============================================================
+
+  const removeIpAddressField = (index) => {
+    setFormData((previous) => {
+      const updatedIpAddresses =
+        previous.ipAddresses.filter(
+          (_, ipIndex) => ipIndex !== index
+        );
+
+      return {
+        ...previous,
+        ipAddresses:
+          updatedIpAddresses.length > 0
+            ? updatedIpAddresses
+            : [""],
+      };
+    });
+  };
+
+  // ============================================================
   // RESET FORM
   // ============================================================
 
   const resetForm = () => {
-    setFormData(initialFormData);
+    setFormData({
+      ...initialFormData,
+      ipAddresses: [""],
+    });
   };
 
   // ============================================================
@@ -295,10 +353,9 @@ function Vendors() {
   // PARSE IP ADDRESSES
   // ============================================================
 
-  const parseIpAddresses = (value) => {
-    return value
-      .split(/[\n,]+/)
-      .map((ip) => ip.trim())
+  const parseIpAddresses = (values) => {
+    return values
+      .map((ip) => String(ip || "").trim())
       .filter(Boolean);
   };
 
@@ -507,6 +564,22 @@ function Vendors() {
   };
 
   // ============================================================
+  // ACCOUNT MANAGER FILTER OPTIONS
+  // ============================================================
+
+  const accountManagers = [
+    ...new Set(
+      vendors
+        .map((vendor) =>
+          String(vendor.account_manager || "").trim()
+        )
+        .filter(Boolean)
+    ),
+  ].sort((a, b) =>
+    a.localeCompare(b)
+  );
+
+  // ============================================================
   // SEARCH
   // ============================================================
 
@@ -550,11 +623,17 @@ function Vendors() {
         statusFilter === "All" ||
         String(vendor.status || "")
           .toUpperCase() ===
-        statusFilter.toUpperCase();
+          statusFilter.toUpperCase();
+
+      const matchesAccountManager =
+        accountManagerFilter === "All" ||
+        accountManager.trim().toLowerCase() ===
+          accountManagerFilter.trim().toLowerCase();
 
       return (
         matchesSearch &&
-        matchesStatus
+        matchesStatus &&
+        matchesAccountManager
       );
     }
   );
@@ -594,10 +673,30 @@ function Vendors() {
     }
 
     if (normalized === "INACTIVE") {
-      return "text-gray-600";
+      return "text-red-600";
     }
 
     return "text-gray-600";
+  };
+
+  // ============================================================
+  // STATUS DISPLAY
+  // ============================================================
+
+  const getStatusLabel = (status) => {
+    const normalized =
+      String(status || "")
+        .toUpperCase();
+
+    if (normalized === "ACTIVE") {
+      return "Active";
+    }
+
+    if (normalized === "INACTIVE") {
+      return "Inactive";
+    }
+
+    return "Unknown";
   };
 
   // ============================================================
@@ -736,7 +835,7 @@ function Vendors() {
               Total Vendors
             </p>
 
-            <p className="text-2xl font-bold mt-2">
+            <p className="text-2xl font-default mt-2">
               {totalVendors}
             </p>
 
@@ -744,11 +843,11 @@ function Vendors() {
 
           <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
 
-            <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
+            <p className="text-xs font-medium uppercase tracking-wide text-green-400">
               Active Vendors
             </p>
 
-            <p className="text-2xl font-bold text-black mt-2">
+            <p className="text-2xl font-default text-black mt-2">
               {activeVendors}
             </p>
 
@@ -756,11 +855,11 @@ function Vendors() {
 
           <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
 
-            <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
+            <p className="text-xs font-medium uppercase tracking-wide text-red-400">
               Inactive Vendors
             </p>
 
-            <p className="text-2xl font-bold text-gray-500 mt-2">
+            <p className="text-2xl font-default text-gray-500 mt-2">
               {inactiveVendors}
             </p>
 
@@ -832,6 +931,33 @@ function Vendors() {
                   />
 
                 </div>
+
+                <select
+                  value={accountManagerFilter}
+                  onChange={(e) =>
+                    setAccountManagerFilter(
+                      e.target.value
+                    )
+                  }
+                  className="px-4 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-sm outline-none min-w-[190px]"
+                >
+
+                  <option value="All">
+                    All Account Managers
+                  </option>
+
+                  {accountManagers.map(
+                    (manager) => (
+                      <option
+                        key={manager}
+                        value={manager}
+                      >
+                        {manager}
+                      </option>
+                    )
+                  )}
+
+                </select>
 
                 <select
                   value={statusFilter}
@@ -937,7 +1063,8 @@ function Vendors() {
                         <p className="text-sm font-medium text-gray-700">
 
                           {search ||
-                          statusFilter !== "All"
+                          statusFilter !== "All" ||
+                          accountManagerFilter !== "All"
                             ? "No vendors match your search or filter."
                             : "No vendors found."}
 
@@ -951,106 +1078,142 @@ function Vendors() {
 
                 {!loading &&
                   filteredVendors.map(
-                    (vendor) => (
+                    (vendor) => {
 
-                      <tr
-                        key={vendor.id}
-                        className="hover:bg-gray-50 transition"
-                      >
+                      const isInactive =
+                        String(vendor.status || "")
+                          .toUpperCase() === "INACTIVE";
 
-                        {/* VENDOR ID */}
+                      return (
+                        <tr
+                          key={vendor.id}
+                          className={`hover:bg-gray-50 transition ${
+                            isInactive
+                              ? "text-red-600"
+                              : "text-gray-900"
+                          }`}
+                        >
 
-                        <td className="px-6 py-3">
+                          {/* VENDOR ID */}
 
-                          <span className="font-medium text-sm text-gray-700">
-                            {vendor.vendor_id || "-"}
-                          </span>
+                          <td className="px-6 py-3">
 
-                        </td>
+                            <span
+                              className={`text-sm ${
+                                isInactive
+                                  ? "text-red-600"
+                                  : "text-gray-700"
+                              }`}
+                            >
+                              {vendor.vendor_id || "-"}
+                            </span>
 
-                        {/* COMPANY NAME */}
+                          </td>
 
-                        <td className="px-6 py-3">
+                          {/* COMPANY NAME */}
 
-                          <span className="font-semibold text-sm text-gray-900">
-                            {vendor.company_name || "-"}
-                          </span>
+                          <td className="px-6 py-3">
 
-                        </td>
+                            <span
+                              className={`font-normal text-sm ${
+                                isInactive
+                                  ? "text-red-600"
+                                  : "text-gray-900"
+                              }`}
+                            >
+                              {vendor.company_name || "-"}
+                            </span>
 
-                        {/* ACCOUNT MANAGER */}
+                          </td>
 
-                        <td className="px-6 py-3">
+                          {/* ACCOUNT MANAGER */}
 
-                          <span className="text-sm text-gray-600">
-                            {vendor.account_manager || "-"}
-                          </span>
+                          <td className="px-6 py-3">
 
-                        </td>
+                            <span
+                              className={`text-sm ${
+                                isInactive
+                                  ? "text-red-600"
+                                  : "text-gray-600"
+                              }`}
+                            >
+                              {vendor.account_manager || "-"}
+                            </span>
 
-                        {/* STATUS */}
+                          </td>
 
-                        <td className="px-6 py-3">
+                          {/* STATUS */}
 
-                          <span
-                            className={`text-xs font-semibold ${getStatusStyle(
-                              vendor.status
-                            )}`}
-                          >
+                          <td className="px-6 py-3">
 
-                            {vendor.status ||
-                              "Unknown"}
-
-                          </span>
-
-                        </td>
-
-                        {/* ACTION */}
-
-                        <td className="px-6 py-3">
-
-                          <div className="flex justify-end">
-
-                            <button
-                              type="button"
-                              onClick={() =>
-                                navigate(
-                                  `/vendors/${encodeURIComponent(
-                                    vendor.vendor_id
-                                  )}`
-                                )
-                              }
-                              className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-medium text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-900 hover:text-white hover:border-gray-900 transition"
+                            <span
+                              className={`text-xs font-semibold ${
+                                isInactive
+                                  ? "text-red-600"
+                                  : getStatusStyle(
+                                      vendor.status
+                                    )
+                              }`}
                             >
 
-                              Open
+                              {getStatusLabel(
+                                vendor.status
+                              )}
 
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="w-4 h-4"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                                strokeWidth="2"
+                            </span>
+
+                          </td>
+
+                          {/* ACTION */}
+
+                          <td className="px-6 py-3">
+
+                            <div className="flex justify-end">
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  navigate(
+                                    `/vendors/${encodeURIComponent(
+                                      vendor.vendor_id
+                                    )}`
+                                  )
+                                }
+                                className={`inline-flex items-center gap-2 px-3.5 py-2 text-sm font-medium border rounded-lg transition ${
+                                  isInactive
+                                    ? "text-red-600 border-red-200 hover:bg-red-600 hover:text-white hover:border-red-600"
+                                    : "text-gray-700 border-gray-200 hover:bg-gray-900 hover:text-white hover:border-gray-900"
+                                }`}
                               >
 
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  d="M9 5l7 7-7 7"
-                                />
+                                Open
 
-                              </svg>
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="w-4 h-4"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                >
 
-                            </button>
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M9 5l7 7-7 7"
+                                  />
 
-                          </div>
+                                </svg>
 
-                        </td>
+                              </button>
 
-                      </tr>
+                            </div>
 
-                    )
+                          </td>
+
+                        </tr>
+                      );
+                    }
                   )}
 
               </tbody>
@@ -1318,56 +1481,133 @@ function Vendors() {
 
                 </div>
 
-                {/* NETWORK INFORMATION */}
+                {/* ==================================================
+                    NETWORK INFORMATION
+                ================================================== */}
 
                 <div className="border-t border-gray-100 pt-7">
 
                   <div className="mb-5">
 
-                    <h3 className="text-base font-bold text-gray-900">
-                      Network Information
-                    </h3>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
 
-                    <p className="text-sm text-gray-500 mt-1">
-                      Add the IP addresses associated with this vendor.
-                    </p>
+                      <div>
+
+                        <h3 className="text-base font-bold text-gray-900">
+                          Network Information
+                        </h3>
+
+                        <p className="text-sm text-gray-500 mt-1">
+                          Add the IP addresses associated with this vendor.
+                        </p>
+
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={addIpAddressField}
+                        className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-black text-white rounded-lg text-sm font-semibold hover:bg-gray-800 transition"
+                      >
+
+                        <span className="text-lg leading-none">
+                          +
+                        </span>
+
+                        Add IP Address
+
+                      </button>
+
+                    </div>
+
+                  </div>
+
+                  <div className="space-y-3">
+
+                    {formData.ipAddresses.map(
+                      (ipAddress, index) => (
+
+                        <div
+                          key={index}
+                          className="flex items-center gap-3"
+                        >
+
+                          <div className="flex-1">
+
+                            <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                              IP Address {index + 1}
+                            </label>
+
+                            <input
+                              type="text"
+                              value={ipAddress}
+                              onChange={(e) =>
+                                handleIpChange(
+                                  index,
+                                  e.target.value
+                                )
+                              }
+                              placeholder="192.168.1.10"
+                              className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none bg-gray-50 focus:bg-white focus:border-black focus:ring-1 focus:ring-black transition font-mono text-sm"
+                            />
+
+                          </div>
+
+                          <div className="pt-5">
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                removeIpAddressField(
+                                  index
+                                )
+                              }
+                              disabled={
+                                formData.ipAddresses.length ===
+                                1
+                              }
+                              className="w-11 h-11 flex items-center justify-center border border-gray-200 rounded-xl text-gray-500 hover:text-red-600 hover:border-red-200 hover:bg-red-50 transition disabled:opacity-30 disabled:cursor-not-allowed"
+                              title="Remove IP address"
+                            >
+
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="w-4 h-4"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                              >
+
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3m-9 0h14"
+                                />
+
+                              </svg>
+
+                            </button>
+
+                          </div>
+
+                        </div>
+
+                      )
+                    )}
 
                   </div>
 
-                  <div>
+                  <p className="text-xs text-gray-400 mt-3">
 
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      IP Addresses
-                    </label>
+                    Each IP address is saved separately inside the{" "}
 
-                    <textarea
-                      name="ipAddresses"
-                      value={
-                        formData.ipAddresses
-                      }
-                      onChange={handleChange}
-                      rows="5"
-                      placeholder={`192.168.1.10
-192.168.1.20
-10.0.0.15
+                    <span className="font-mono text-gray-600">
+                      vendors.ip_addresses
+                    </span>{" "}
 
-You can also separate IPs with commas.`}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none bg-gray-50 focus:bg-white focus:border-black focus:ring-1 focus:ring-black transition resize-none font-mono text-sm"
-                    />
+                    column.
 
-                    <p className="text-xs text-gray-400 mt-2">
-
-                      These values are saved to the{" "}
-
-                      <span className="font-mono text-gray-600">
-                        vendors.ip_addresses
-                      </span>{" "}
-
-                      column.
-
-                    </p>
-
-                  </div>
+                  </p>
 
                 </div>
 
