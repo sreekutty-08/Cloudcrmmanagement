@@ -5,6 +5,7 @@ import React, {
   useState,
 } from "react";
 import { Link } from "react-router-dom";
+import { createPortal } from "react-dom";
 import { supabase } from "../../supabaseClient";
 
 const CLIENT_RESOURCE_TABLE = "client_resources";
@@ -21,6 +22,8 @@ const EMPTY_CLIENT = {
   supportQuality: "",
   status: "",
   qualityDescriptionId: "",
+  manualQualityDescription: "",
+  country: "",
 };
 
 function Clientresource() {
@@ -49,10 +52,10 @@ function Clientresource() {
 
   const [search, setSearch] = useState("");
   const [countryFilter, setCountryFilter] = useState("All");
-  const [routeFilter, setRouteFilter] = useState("All");
   const [managerFilter, setManagerFilter] = useState("All");
   const [qualityDescriptionFilter, setQualityDescriptionFilter] =
     useState("All");
+  const [statusFilter, setStatusFilter] = useState("All");
 
   /* ============================================================
      MODALS
@@ -66,8 +69,16 @@ function Clientresource() {
   const [viewingClient, setViewingClient] = useState(null);
 
   const [openMenu, setOpenMenu] = useState(null);
+  const [menuPosition, setMenuPosition] = useState(null);
 
   const [newClient, setNewClient] = useState(EMPTY_CLIENT);
+
+  /* ============================================================
+     MANUAL QUALITY DESCRIPTION
+  ============================================================ */
+
+  const [useManualQualityDescription, setUseManualQualityDescription] =
+    useState(false);
 
   /* ============================================================
      HELPER - QUALITY DESCRIPTION
@@ -120,6 +131,7 @@ function Clientresource() {
 
         country:
           company?.country ??
+          resource.country ??
           "",
 
         sellingRate:
@@ -164,7 +176,10 @@ function Clientresource() {
   ============================================================ */
 
   const fetchQualityDescriptions = useCallback(async () => {
-    const { data, error: qualityError } = await supabase
+    const {
+      data,
+      error: qualityError,
+    } = await supabase
       .from(QUALITY_TABLE)
       .select("*")
       .order("id", { ascending: true });
@@ -191,6 +206,7 @@ function Clientresource() {
        * STEP 1
        * Fetch resources from client_resources table.
        */
+
       const {
         data: resourceData,
         error: resourceError,
@@ -209,6 +225,7 @@ function Clientresource() {
        * STEP 2
        * Fetch quality descriptions.
        */
+
       let qualities = [];
 
       try {
@@ -225,8 +242,9 @@ function Clientresource() {
 
       /*
        * STEP 3
-       * Get customers.id values from client_resources.customer_id.
+       * Get customers.
        */
+
       const customerIds = [
         ...new Set(
           resources
@@ -262,8 +280,9 @@ function Clientresource() {
 
       /*
        * STEP 4
-       * Get companies using customers.company_id.
+       * Get companies.
        */
+
       const companyIds = [
         ...new Set(
           customers
@@ -301,50 +320,69 @@ function Clientresource() {
        * STEP 5
        * Create lookup maps.
        */
+
       const customerMap = new Map();
 
       customers.forEach((customer) => {
-        customerMap.set(String(customer.id), customer);
+        customerMap.set(
+          String(customer.id),
+          customer
+        );
       });
 
       const companyMap = new Map();
 
       companies.forEach((company) => {
-        companyMap.set(String(company.id), company);
+        companyMap.set(
+          String(company.id),
+          company
+        );
       });
 
       const qualityMap = new Map();
 
       qualities.forEach((quality) => {
-        qualityMap.set(String(quality.id), quality);
+        qualityMap.set(
+          String(quality.id),
+          quality
+        );
       });
 
       /*
        * STEP 6
        * Combine everything.
        */
-      const formattedClients = resources.map((resource) => {
-        const customer = customerMap.get(
-          String(resource.customer_id)
-        );
 
-        const company = customer
-          ? companyMap.get(String(customer.company_id))
-          : null;
+      const formattedClients = resources.map(
+        (resource) => {
+          const customer =
+            customerMap.get(
+              String(resource.customer_id)
+            );
 
-        const quality = resource.quality_description_id
-          ? qualityMap.get(
-              String(resource.quality_description_id)
-            )
-          : null;
+          const company = customer
+            ? companyMap.get(
+                String(customer.company_id)
+              )
+            : null;
 
-        return formatClient(
-          resource,
-          customer,
-          company,
-          quality
-        );
-      });
+          const quality =
+            resource.quality_description_id
+              ? qualityMap.get(
+                  String(
+                    resource.quality_description_id
+                  )
+                )
+              : null;
+
+          return formatClient(
+            resource,
+            customer,
+            company,
+            quality
+          );
+        }
+      );
 
       setClients(formattedClients);
     } catch (err) {
@@ -362,7 +400,10 @@ function Clientresource() {
     } finally {
       setLoading(false);
     }
-  }, [fetchQualityDescriptions, formatClient]);
+  }, [
+    fetchQualityDescriptions,
+    formatClient,
+  ]);
 
   /* ============================================================
      INITIAL FETCH
@@ -373,10 +414,12 @@ function Clientresource() {
   }, [fetchClients]);
 
   /* ============================================================
-     FETCH COMPANY FOR CUSTOMER
+     FETCH COMPANY BY ID
   ============================================================ */
 
-  const fetchCompanyById = async (companyId) => {
+  const fetchCompanyById = async (
+    companyId
+  ) => {
     if (
       companyId === null ||
       companyId === undefined ||
@@ -404,11 +447,15 @@ function Clientresource() {
   };
 
   /* ============================================================
-     FETCH CUSTOMER BY VISIBLE CUSTOMER ID
+     FETCH CUSTOMER BY ID
   ============================================================ */
 
-  const fetchCustomerById = async (rawValue) => {
-    const value = String(rawValue || "").trim();
+  const fetchCustomerById = async (
+    rawValue
+  ) => {
+    const value = String(
+      rawValue || ""
+    ).trim();
 
     if (!value) {
       setSelectedCustomer(null);
@@ -457,25 +504,35 @@ function Clientresource() {
         return null;
       }
 
-      const company = await fetchCompanyById(
-        customer.company_id
-      );
+      const company =
+        await fetchCompanyById(
+          customer.company_id
+        );
 
       const customerWithCompany = {
         ...customer,
         company,
       };
 
-      setSelectedCustomer(customerWithCompany);
+      setSelectedCustomer(
+        customerWithCompany
+      );
+
       setCustomerSuggestions([]);
+
       setCustomerSearch(
-        customer.customer_id || value
+        customer.customer_id ||
+          value
       );
 
       setNewClient((previous) => ({
         ...previous,
         customerId:
-          customer.customer_id || value,
+          customer.customer_id ||
+          value,
+        country:
+          company?.country ||
+          "",
       }));
 
       return customerWithCompany;
@@ -500,16 +557,20 @@ function Clientresource() {
   };
 
   /* ============================================================
-     CUSTOMER ID SEARCH
+     CUSTOMER SEARCH
   ============================================================ */
 
   useEffect(() => {
     let cancelled = false;
 
     const searchCustomers = async () => {
-      const value = customerSearch.trim();
+      const value =
+        customerSearch.trim();
 
-      if (!value || selectedCustomer) {
+      if (
+        !value ||
+        selectedCustomer
+      ) {
         setCustomerSuggestions([]);
         return;
       }
@@ -525,7 +586,10 @@ function Clientresource() {
           .select(
             "id, customer_id, company_id, status"
           )
-          .ilike("customer_id", `%${value}%`)
+          .ilike(
+            "customer_id",
+            `%${value}%`
+          )
           .limit(10);
 
         if (lookupError) {
@@ -533,7 +597,9 @@ function Clientresource() {
         }
 
         if (!cancelled) {
-          setCustomerSuggestions(data || []);
+          setCustomerSuggestions(
+            data || []
+          );
         }
       } catch (err) {
         console.error(
@@ -542,7 +608,9 @@ function Clientresource() {
         );
 
         if (!cancelled) {
-          setCustomerSuggestions([]);
+          setCustomerSuggestions(
+            []
+          );
 
           setError(
             err?.message ||
@@ -551,7 +619,9 @@ function Clientresource() {
         }
       } finally {
         if (!cancelled) {
-          setCustomerLookupLoading(false);
+          setCustomerLookupLoading(
+            false
+          );
         }
       }
     };
@@ -565,74 +635,91 @@ function Clientresource() {
       cancelled = true;
       clearTimeout(timeout);
     };
-  }, [customerSearch, selectedCustomer]);
+  }, [
+    customerSearch,
+    selectedCustomer,
+  ]);
 
   /* ============================================================
      SELECT CUSTOMER
   ============================================================ */
 
-  const handleSelectCustomer = async (customer) => {
-    try {
-      setError("");
-      setCustomerLookupLoading(true);
+  const handleSelectCustomer =
+    async (customer) => {
+      try {
+        setError("");
+        setCustomerLookupLoading(true);
 
-      const company = await fetchCompanyById(
-        customer.company_id
-      );
+        const company =
+          await fetchCompanyById(
+            customer.company_id
+          );
 
-      const customerWithCompany = {
-        ...customer,
-        company,
-      };
+        const customerWithCompany = {
+          ...customer,
+          company,
+        };
 
-      setSelectedCustomer(customerWithCompany);
+        setSelectedCustomer(
+          customerWithCompany
+        );
 
-      setCustomerSearch(
-        customer.customer_id || ""
-      );
+        setCustomerSearch(
+          customer.customer_id ||
+            ""
+        );
 
-      setCustomerSuggestions([]);
+        setCustomerSuggestions([]);
 
-      setNewClient((previous) => ({
-        ...previous,
-        customerId:
-          customer.customer_id || "",
-      }));
-    } catch (err) {
-      console.error(
-        "Error loading selected customer:",
-        err
-      );
+        setNewClient((previous) => ({
+          ...previous,
+          customerId:
+            customer.customer_id ||
+            "",
+          country:
+            company?.country ||
+            "",
+        }));
+      } catch (err) {
+        console.error(
+          "Error loading selected customer:",
+          err
+        );
 
-      setError(
-        err?.message ||
-          "Unable to load selected customer."
-      );
-    } finally {
-      setCustomerLookupLoading(false);
-    }
-  };
+        setError(
+          err?.message ||
+            "Unable to load selected customer."
+        );
+      } finally {
+        setCustomerLookupLoading(
+          false
+        );
+      }
+    };
 
   /* ============================================================
      CUSTOMER SEARCH CHANGE
   ============================================================ */
 
-  const handleCustomerSearchChange = (event) => {
-    const value = event.target.value;
+  const handleCustomerSearchChange =
+    (event) => {
+      const value =
+        event.target.value;
 
-    setCustomerSearch(value);
-    setSelectedCustomer(null);
-    setCustomerSuggestions([]);
-    setError("");
+      setCustomerSearch(value);
+      setSelectedCustomer(null);
+      setCustomerSuggestions([]);
+      setError("");
 
-    setNewClient((previous) => ({
-      ...previous,
-      customerId: value,
-    }));
-  };
+      setNewClient((previous) => ({
+        ...previous,
+        customerId: value,
+        country: "",
+      }));
+    };
 
   /* ============================================================
-     OPEN ADD
+     OPEN ADD CLIENT
   ============================================================ */
 
   const handleOpenAddClient = () => {
@@ -643,24 +730,37 @@ function Clientresource() {
     setCustomerSuggestions([]);
     setSelectedCustomer(null);
 
-    setNewClient(EMPTY_CLIENT);
+    setUseManualQualityDescription(
+      false
+    );
+
+    setNewClient(
+      EMPTY_CLIENT
+    );
 
     setShowAddClient(true);
   };
 
   /* ============================================================
-     CLOSE ADD
+     CLOSE ADD CLIENT
   ============================================================ */
 
-  const handleCloseAddClient = () => {
-    setShowAddClient(false);
+  const handleCloseAddClient =
+    () => {
+      setShowAddClient(false);
 
-    setCustomerSearch("");
-    setCustomerSuggestions([]);
-    setSelectedCustomer(null);
+      setCustomerSearch("");
+      setCustomerSuggestions([]);
+      setSelectedCustomer(null);
 
-    setNewClient(EMPTY_CLIENT);
-  };
+      setUseManualQualityDescription(
+        false
+      );
+
+      setNewClient(
+        EMPTY_CLIENT
+      );
+    };
 
   /* ============================================================
      FILTER OPTIONS
@@ -671,7 +771,9 @@ function Clientresource() {
       ...new Set(
         clients
           .map((client) =>
-            String(client.country || "").trim()
+            String(
+              client.country || ""
+            ).trim()
           )
           .filter(Boolean)
       ),
@@ -684,7 +786,8 @@ function Clientresource() {
         clients
           .map((client) =>
             String(
-              client.accountManager || ""
+              client.accountManager ||
+                ""
             ).trim()
           )
           .filter(Boolean)
@@ -692,91 +795,102 @@ function Clientresource() {
     ].sort();
   }, [clients]);
 
-  const routeTypes = useMemo(() => {
-    return [
-      ...new Set(
-        clients
-          .map((client) =>
-            String(
-              client.routeType || ""
-            ).trim()
-          )
-          .filter(Boolean)
-      ),
-    ].sort();
-  }, [clients]);
-
-  const qualityDescriptions = useMemo(() => {
-    return [
-      ...new Set(
-        clients
-          .map((client) =>
-            String(
-              client.qualityDescription || ""
-            ).trim()
-          )
-          .filter(Boolean)
-      ),
-    ].sort();
-  }, [clients]);
+  const qualityDescriptions =
+    useMemo(() => {
+      return [
+        ...new Set(
+          clients
+            .map((client) =>
+              String(
+                client.qualityDescription ||
+                  ""
+              ).trim()
+            )
+            .filter(Boolean)
+        ),
+      ].sort();
+    }, [clients]);
 
   /* ============================================================
      FILTER CLIENTS
   ============================================================ */
 
-  const filteredClients = useMemo(() => {
-    const searchValue =
-      search.toLowerCase().trim();
+  const filteredClients =
+    useMemo(() => {
+      const searchValue =
+        search.toLowerCase().trim();
 
-    return clients.filter((client) => {
-      const matchesSearch =
-        !searchValue ||
-        String(client.customerId || "")
-          .toLowerCase()
-          .includes(searchValue) ||
-        String(client.company || "")
-          .toLowerCase()
-          .includes(searchValue) ||
-        String(client.accountManager || "")
-          .toLowerCase()
-          .includes(searchValue) ||
-        String(client.country || "")
-          .toLowerCase()
-          .includes(searchValue);
+      return clients.filter(
+        (client) => {
+          const matchesSearch =
+            !searchValue ||
+            String(
+              client.customerId || ""
+            )
+              .toLowerCase()
+              .includes(searchValue) ||
+            String(
+              client.company || ""
+            )
+              .toLowerCase()
+              .includes(searchValue) ||
+            String(
+              client.accountManager ||
+                ""
+            )
+              .toLowerCase()
+              .includes(searchValue) ||
+            String(
+              client.country || ""
+            )
+              .toLowerCase()
+              .includes(searchValue);
 
-      const matchesCountry =
-        countryFilter === "All" ||
-        client.country === countryFilter;
+          const matchesCountry =
+            countryFilter === "All" ||
+            client.country ===
+              countryFilter;
 
-      const matchesRoute =
-        routeFilter === "All" ||
-        client.routeType === routeFilter;
+          const matchesManager =
+            managerFilter === "All" ||
+            client.accountManager ===
+              managerFilter;
 
-      const matchesManager =
-        managerFilter === "All" ||
-        client.accountManager === managerFilter;
+          const matchesQuality =
+            qualityDescriptionFilter ===
+              "All" ||
+            client.qualityDescription ===
+              qualityDescriptionFilter;
 
-      const matchesQuality =
-        qualityDescriptionFilter === "All" ||
-        client.qualityDescription ===
-          qualityDescriptionFilter;
+          const normalizedStatus =
+            String(
+              client.status || ""
+            )
+              .trim()
+              .toLowerCase();
 
-      return (
-        matchesSearch &&
-        matchesCountry &&
-        matchesRoute &&
-        matchesManager &&
-        matchesQuality
+          const matchesStatus =
+            statusFilter === "All" ||
+            normalizedStatus ===
+              statusFilter.toLowerCase();
+
+          return (
+            matchesSearch &&
+            matchesCountry &&
+            matchesManager &&
+            matchesQuality &&
+            matchesStatus
+          );
+        }
       );
-    });
-  }, [
-    clients,
-    search,
-    countryFilter,
-    routeFilter,
-    managerFilter,
-    qualityDescriptionFilter,
-  ]);
+    }, [
+      clients,
+      search,
+      countryFilter,
+      managerFilter,
+      qualityDescriptionFilter,
+      statusFilter,
+    ]);
 
   /* ============================================================
      SUMMARY
@@ -784,15 +898,22 @@ function Clientresource() {
 
   const totalClients = new Set(
     filteredClients
-      .map((client) => client.customerId)
+      .map(
+        (client) =>
+          client.customerId
+      )
       .filter(Boolean)
   ).size;
 
-  const totalCapacity = filteredClients.reduce(
-    (total, client) =>
-      total + Number(client.ports || 0),
-    0
-  );
+  const totalCapacity =
+    filteredClients.reduce(
+      (total, client) =>
+        total +
+        Number(
+          client.ports || 0
+        ),
+      0
+    );
 
   const avgSellingRate =
     filteredClients.length > 0
@@ -800,35 +921,44 @@ function Clientresource() {
           filteredClients.reduce(
             (total, client) =>
               total +
-              Number(client.sellingRate || 0),
+              Number(
+                client.sellingRate ||
+                  0
+              ),
             0
-          ) / filteredClients.length
+          ) /
+          filteredClients.length
         ).toFixed(6)
       : "0.000000";
 
   const healthWarnings =
-    filteredClients.filter((client) => {
-      const support =
-        String(
-          client.supportQuality || ""
-        ).toLowerCase();
+    filteredClients.filter(
+      (client) => {
+        const support =
+          String(
+            client.supportQuality ||
+              ""
+          ).toLowerCase();
 
-      const status =
-        String(
-          client.status || ""
-        ).toLowerCase();
+        const status =
+          String(
+            client.status || ""
+          ).toLowerCase();
 
-      return (
-        support === "poor" ||
-        status === "inactive"
-      );
-    }).length;
+        return (
+          support === "poor" ||
+          status === "inactive"
+        );
+      }
+    ).length;
 
   /* ============================================================
      FORMAT CREDIT
   ============================================================ */
 
-  const formatCredit = (credit) => {
+  const formatCredit = (
+    credit
+  ) => {
     if (
       credit === null ||
       credit === undefined ||
@@ -844,442 +974,843 @@ function Clientresource() {
      ADD CLIENT
   ============================================================ */
 
-  const handleAddClient = async (event) => {
-    event.preventDefault();
+  const handleAddClient =
+    async (event) => {
+      event.preventDefault();
 
-    setError("");
-    setSuccess("");
+      setError("");
+      setSuccess("");
 
-    let customer = selectedCustomer;
+      let customer =
+        selectedCustomer;
 
-    if (
-      !customer ||
-      String(customer.customer_id || "").trim() !==
-        customerSearch.trim()
-    ) {
-      customer = await fetchCustomerById(
-        customerSearch
-      );
-    }
-
-    if (!customer) {
-      return;
-    }
-
-    const customerDatabaseId = Number(
-      customer.id
-    );
-
-    if (
-      !customerDatabaseId ||
-      Number.isNaN(customerDatabaseId)
-    ) {
-      setError(
-        "The selected customer does not have a valid database ID."
-      );
-
-      return;
-    }
-
-    const sellingRate =
-      newClient.sellingRate === ""
-        ? null
-        : Number(newClient.sellingRate);
-
-    const ports =
-      newClient.ports === ""
-        ? null
-        : Number(newClient.ports);
-
-    const credit =
-      newClient.credit === ""
-        ? null
-        : Number(newClient.credit);
-
-    const qualityDescriptionId =
-      newClient.qualityDescriptionId === ""
-        ? null
-        : Number(
-            newClient.qualityDescriptionId
+      if (
+        !customer ||
+        String(
+          customer.customer_id ||
+            ""
+        ).trim() !==
+          customerSearch.trim()
+      ) {
+        customer =
+          await fetchCustomerById(
+            customerSearch
           );
-
-    if (
-      sellingRate !== null &&
-      Number.isNaN(sellingRate)
-    ) {
-      setError(
-        "Selling rate must be a valid number."
-      );
-
-      return;
-    }
-
-    if (
-      ports !== null &&
-      Number.isNaN(ports)
-    ) {
-      setError(
-        "Ports must be a valid number."
-      );
-
-      return;
-    }
-
-    if (
-      credit !== null &&
-      Number.isNaN(credit)
-    ) {
-      setError(
-        "Credit must be a valid number."
-      );
-
-      return;
-    }
-
-    if (
-      qualityDescriptionId !== null &&
-      Number.isNaN(qualityDescriptionId)
-    ) {
-      setError(
-        "Quality Description is invalid."
-      );
-
-      return;
-    }
-
-    const payload = {
-      customer_id: customerDatabaseId,
-
-      selling_rate: sellingRate,
-
-      ports,
-
-      credit,
-
-      support_quality:
-        newClient.supportQuality || null,
-
-      quality_description_id:
-        qualityDescriptionId,
-
-      route_type:
-        newClient.routeType || null,
-
-      status:
-        newClient.status || null,
-    };
-
-    try {
-      const {
-        data,
-        error: insertError,
-      } = await supabase
-        .from(CLIENT_RESOURCE_TABLE)
-        .insert([payload])
-        .select("*")
-        .single();
-
-      if (insertError) {
-        throw insertError;
       }
 
-      const company =
-        customer.company || null;
+      if (!customer) {
+        return;
+      }
 
-      const quality =
-        qualityDescriptionsData.find(
-          (item) =>
-            String(item.id) ===
-            String(
-              qualityDescriptionId
-            )
-        ) || null;
+      const customerDatabaseId =
+        Number(customer.id);
 
-      const formatted = formatClient(
-        data,
-        customer,
-        company,
-        quality
-      );
+      if (
+        !customerDatabaseId ||
+        Number.isNaN(
+          customerDatabaseId
+        )
+      ) {
+        setError(
+          "The selected customer does not have a valid database ID."
+        );
 
-      setClients((previous) => [
-        ...previous,
-        formatted,
-      ]);
+        return;
+      }
 
-      setSuccess(
-        "Client resource added successfully."
-      );
+      const sellingRate =
+        newClient.sellingRate ===
+        ""
+          ? null
+          : Number(
+              newClient.sellingRate
+            );
 
-      handleCloseAddClient();
-    } catch (err) {
-      console.error(
-        "Error adding client resource:",
-        err
-      );
+      const ports =
+        newClient.ports === ""
+          ? null
+          : Number(
+              newClient.ports
+            );
 
-      setError(
-        err?.message ||
-          "Unable to add client resource."
-      );
-    }
-  };
+      const credit =
+        newClient.credit === ""
+          ? null
+          : Number(
+              newClient.credit
+            );
 
-  /* ============================================================
-     EDIT CLIENT
-  ============================================================ */
+      let qualityDescriptionId =
+        newClient.qualityDescriptionId ===
+        ""
+          ? null
+          : Number(
+              newClient.qualityDescriptionId
+            );
 
-  const handleEditClient = (client) => {
-    setEditingClient({
-      ...client,
+      if (
+        sellingRate !== null &&
+        Number.isNaN(
+          sellingRate
+        )
+      ) {
+        setError(
+          "Selling rate must be a valid number."
+        );
 
-      sellingRate:
-        client.sellingRate === null ||
-        client.sellingRate === undefined
-          ? ""
-          : String(client.sellingRate),
+        return;
+      }
 
-      ports:
-        client.ports === null ||
-        client.ports === undefined
-          ? ""
-          : String(client.ports),
+      if (
+        ports !== null &&
+        Number.isNaN(ports)
+      ) {
+        setError(
+          "Ports must be a valid number."
+        );
 
-      credit:
-        client.credit === null ||
-        client.credit === undefined
-          ? ""
-          : String(client.credit),
+        return;
+      }
 
-      routeType:
-        client.routeType || "",
+      if (
+        credit !== null &&
+        Number.isNaN(credit)
+      ) {
+        setError(
+          "Credit must be a valid number."
+        );
 
-      supportQuality:
-        client.supportQuality || "",
+        return;
+      }
 
-      status:
-        client.status || "",
+      if (
+        qualityDescriptionId !==
+          null &&
+        Number.isNaN(
+          qualityDescriptionId
+        )
+      ) {
+        setError(
+          "Quality Description is invalid."
+        );
 
-      qualityDescriptionId:
-        client.qualityDescriptionId
-          ? String(
-              client.qualityDescriptionId
-            )
-          : "",
-    });
+        return;
+      }
 
-    setOpenMenu(null);
-    setShowEditClient(true);
-    setError("");
-    setSuccess("");
-  };
+      try {
+        /*
+         * ========================================================
+         * MANUAL QUALITY DESCRIPTION
+         * ========================================================
+         */
 
-  /* ============================================================
-     SAVE EDIT
-  ============================================================ */
+        if (
+          useManualQualityDescription &&
+          newClient.manualQualityDescription &&
+          newClient.manualQualityDescription.trim()
+        ) {
+          const manualDescription =
+            newClient.manualQualityDescription.trim();
 
-  const handleSaveEdit = async (event) => {
-    event.preventDefault();
+          const {
+            data: newQuality,
+            error:
+              qualityInsertError,
+          } = await supabase
+            .from(QUALITY_TABLE)
+            .insert([
+              {
+                description:
+                  manualDescription,
+              },
+            ])
+            .select("*")
+            .single();
 
-    if (!editingClient) return;
+          if (qualityInsertError) {
+            throw qualityInsertError;
+          }
 
-    setError("");
-    setSuccess("");
+          qualityDescriptionId =
+            newQuality.id;
 
-    const sellingRate =
-      editingClient.sellingRate === ""
-        ? null
-        : Number(
-            editingClient.sellingRate
+          setQualityDescriptionsData(
+            (previous) => [
+              ...previous,
+              newQuality,
+            ]
           );
+        }
 
-    const ports =
-      editingClient.ports === ""
-        ? null
-        : Number(editingClient.ports);
+        /*
+         * ========================================================
+         * COUNTRY
+         * ========================================================
+         */
 
-    const credit =
-      editingClient.credit === ""
-        ? null
-        : Number(editingClient.credit);
+        const enteredCountry =
+          String(
+            newClient.country ||
+              customer.company
+                ?.country ||
+              ""
+          ).trim();
 
-    const qualityDescriptionId =
-      editingClient.qualityDescriptionId ===
-      ""
-        ? null
-        : Number(
-            editingClient.qualityDescriptionId
-          );
+        if (
+          enteredCountry &&
+          customer.company_id
+        ) {
+          const {
+            error:
+              countryUpdateError,
+          } = await supabase
+            .from(COMPANY_TABLE)
+            .update({
+              country:
+                enteredCountry,
+            })
+            .eq(
+              "id",
+              customer.company_id
+            );
 
-    if (
-      sellingRate !== null &&
-      Number.isNaN(sellingRate)
-    ) {
-      setError(
-        "Selling rate must be a valid number."
-      );
+          if (countryUpdateError) {
+            throw countryUpdateError;
+          }
+        }
 
-      return;
-    }
+        /*
+         * ========================================================
+         * CLIENT RESOURCE PAYLOAD
+         * ========================================================
+         */
 
-    if (
-      ports !== null &&
-      Number.isNaN(ports)
-    ) {
-      setError(
-        "Ports must be a valid number."
-      );
-
-      return;
-    }
-
-    if (
-      credit !== null &&
-      Number.isNaN(credit)
-    ) {
-      setError(
-        "Credit must be a valid number."
-      );
-
-      return;
-    }
-
-    try {
-      const {
-        data,
-        error: updateError,
-      } = await supabase
-        .from(CLIENT_RESOURCE_TABLE)
-        .update({
+        const payload = {
           customer_id:
-            editingClient.customerResourceId,
+            customerDatabaseId,
 
-          selling_rate: sellingRate,
+          selling_rate:
+            sellingRate,
 
           ports,
 
           credit,
 
           support_quality:
-            editingClient.supportQuality ||
+            newClient.supportQuality ||
             null,
 
           quality_description_id:
             qualityDescriptionId,
 
           route_type:
-            editingClient.routeType || null,
+            null,
 
           status:
-            editingClient.status || null,
+            newClient.status ||
+            null,
+        };
 
-          updated_at:
-            new Date().toISOString(),
-        })
-        .eq("id", editingClient.id)
-        .select("*")
-        .single();
-
-      if (updateError) {
-        throw updateError;
-      }
-
-      let customer = null;
-      let company = null;
-
-      if (
-        editingClient.customerResourceId
-      ) {
         const {
-          data: customerData,
-          error: customerError,
+          data,
+          error:
+            insertError,
         } = await supabase
-          .from(CUSTOMER_TABLE)
-          .select(
-            "id, customer_id, company_id, status"
+          .from(
+            CLIENT_RESOURCE_TABLE
           )
-          .eq(
-            "id",
-            editingClient.customerResourceId
-          )
-          .maybeSingle();
+          .insert([payload])
+          .select("*")
+          .single();
 
-        if (customerError) {
-          throw customerError;
+        if (insertError) {
+          throw insertError;
         }
 
-        customer = customerData;
+        /*
+         * Fetch updated company so the new
+         * country is immediately displayed.
+         */
 
-        if (customer) {
+        let company =
+          customer.company ||
+          null;
+
+        if (
+          customer.company_id
+        ) {
           company =
             await fetchCompanyById(
               customer.company_id
             );
         }
+
+        const quality =
+          qualityDescriptionsData.find(
+            (item) =>
+              String(item.id) ===
+              String(
+                qualityDescriptionId
+              )
+          ) || null;
+
+        /*
+         * If manually inserted quality was
+         * created above, use it from the
+         * latest quality list.
+         */
+
+        const manualQuality =
+          useManualQualityDescription &&
+          qualityDescriptionId
+            ? (
+                await supabase
+                  .from(
+                    QUALITY_TABLE
+                  )
+                  .select("*")
+                  .eq(
+                    "id",
+                    qualityDescriptionId
+                  )
+                  .maybeSingle()
+              ).data
+            : null;
+
+        const formatted =
+          formatClient(
+            data,
+            customer,
+            company,
+            manualQuality ||
+              quality
+          );
+
+        setClients(
+          (previous) => [
+            ...previous,
+            formatted,
+          ]
+        );
+
+        setSuccess(
+          "Client resource added successfully."
+        );
+
+        handleCloseAddClient();
+      } catch (err) {
+        console.error(
+          "Error adding client resource:",
+          err
+        );
+
+        setError(
+          err?.message ||
+            "Unable to add client resource."
+        );
+      }
+    };
+
+  /* ============================================================
+     EDIT CLIENT
+  ============================================================ */
+
+  const handleEditClient =
+    (client) => {
+      setEditingClient({
+        ...client,
+
+        sellingRate:
+          client.sellingRate ===
+            null ||
+          client.sellingRate ===
+            undefined
+            ? ""
+            : String(
+                client.sellingRate
+              ),
+
+        ports:
+          client.ports === null ||
+          client.ports === undefined
+            ? ""
+            : String(
+                client.ports
+              ),
+
+        credit:
+          client.credit === null ||
+          client.credit === undefined
+            ? ""
+            : String(
+                client.credit
+              ),
+
+        routeType:
+          client.routeType || "",
+
+        supportQuality:
+          client.supportQuality ||
+          "",
+
+        status:
+          client.status || "",
+
+        qualityDescriptionId:
+          client.qualityDescriptionId
+            ? String(
+                client.qualityDescriptionId
+              )
+            : "",
+
+        country:
+          client.country || "",
+      });
+
+      setOpenMenu(null);
+      setMenuPosition(null);
+
+      setShowEditClient(true);
+      setError("");
+      setSuccess("");
+    };
+
+  /* ============================================================
+     SAVE EDIT
+  ============================================================ */
+
+  const handleSaveEdit =
+    async (event) => {
+      event.preventDefault();
+
+      if (!editingClient)
+        return;
+
+      setError("");
+      setSuccess("");
+
+      const sellingRate =
+        editingClient.sellingRate ===
+        ""
+          ? null
+          : Number(
+              editingClient.sellingRate
+            );
+
+      const ports =
+        editingClient.ports === ""
+          ? null
+          : Number(
+              editingClient.ports
+            );
+
+      const credit =
+        editingClient.credit ===
+        ""
+          ? null
+          : Number(
+              editingClient.credit
+            );
+
+      const qualityDescriptionId =
+        editingClient.qualityDescriptionId ===
+        ""
+          ? null
+          : Number(
+              editingClient.qualityDescriptionId
+            );
+
+      if (
+        sellingRate !== null &&
+        Number.isNaN(
+          sellingRate
+        )
+      ) {
+        setError(
+          "Selling rate must be a valid number."
+        );
+
+        return;
       }
 
-      const quality =
-        qualityDescriptionsData.find(
-          (item) =>
-            String(item.id) ===
-            String(
-              qualityDescriptionId
+      if (
+        ports !== null &&
+        Number.isNaN(ports)
+      ) {
+        setError(
+          "Ports must be a valid number."
+        );
+
+        return;
+      }
+
+      if (
+        credit !== null &&
+        Number.isNaN(credit)
+      ) {
+        setError(
+          "Credit must be a valid number."
+        );
+
+        return;
+      }
+
+      try {
+        const {
+          data,
+          error:
+            updateError,
+        } = await supabase
+          .from(
+            CLIENT_RESOURCE_TABLE
+          )
+          .update({
+            customer_id:
+              editingClient.customerResourceId,
+
+            selling_rate:
+              sellingRate,
+
+            ports,
+
+            credit,
+
+            support_quality:
+              editingClient.supportQuality ||
+              null,
+
+            quality_description_id:
+              qualityDescriptionId,
+
+            route_type:
+              editingClient.routeType ||
+              null,
+
+            status:
+              editingClient.status ||
+              null,
+
+            updated_at:
+              new Date().toISOString(),
+          })
+          .eq(
+            "id",
+            editingClient.id
+          )
+          .select("*")
+          .single();
+
+        if (updateError) {
+          throw updateError;
+        }
+
+        let customer = null;
+        let company = null;
+
+        if (
+          editingClient.customerResourceId
+        ) {
+          const {
+            data:
+              customerData,
+            error:
+              customerError,
+          } = await supabase
+            .from(
+              CUSTOMER_TABLE
             )
-        ) || null;
+            .select(
+              "id, customer_id, company_id, status"
+            )
+            .eq(
+              "id",
+              editingClient.customerResourceId
+            )
+            .maybeSingle();
 
-      const formatted = formatClient(
-        data,
-        customer,
-        company,
-        quality
-      );
+          if (customerError) {
+            throw customerError;
+          }
 
-      setClients((previous) =>
-        previous.map((client) =>
-          client.id === formatted.id
-            ? formatted
-            : client
-        )
-      );
+          customer =
+            customerData;
 
-      setShowEditClient(false);
-      setEditingClient(null);
+          if (customer) {
+            company =
+              await fetchCompanyById(
+                customer.company_id
+              );
 
-      setSuccess(
-        "Client resource updated successfully."
-      );
-    } catch (err) {
-      console.error(
-        "Error updating client resource:",
-        err
-      );
+            /*
+             * Update country if changed
+             * in edit modal.
+             */
 
-      setError(
-        err?.message ||
-          "Unable to update client resource."
-      );
-    }
-  };
+            if (
+              editingClient.country !==
+                undefined &&
+              customer.company_id
+            ) {
+              const enteredCountry =
+                String(
+                  editingClient.country ||
+                    ""
+                ).trim();
+
+              if (
+                enteredCountry
+              ) {
+                const {
+                  error:
+                    countryError,
+                } = await supabase
+                  .from(
+                    COMPANY_TABLE
+                  )
+                  .update({
+                    country:
+                      enteredCountry,
+                  })
+                  .eq(
+                    "id",
+                    customer.company_id
+                  );
+
+                if (
+                  countryError
+                ) {
+                  throw countryError;
+                }
+
+                company = {
+                  ...company,
+                  country:
+                    enteredCountry,
+                };
+              }
+            }
+          }
+        }
+
+        const quality =
+          qualityDescriptionsData.find(
+            (item) =>
+              String(item.id) ===
+              String(
+                qualityDescriptionId
+              )
+          ) || null;
+
+        const formatted =
+          formatClient(
+            data,
+            customer,
+            company,
+            quality
+          );
+
+        setClients(
+          (previous) =>
+            previous.map(
+              (client) =>
+                client.id ===
+                formatted.id
+                  ? formatted
+                  : client
+            )
+        );
+
+        setShowEditClient(false);
+        setEditingClient(null);
+
+        setSuccess(
+          "Client resource updated successfully."
+        );
+      } catch (err) {
+        console.error(
+          "Error updating client resource:",
+          err
+        );
+
+        setError(
+          err?.message ||
+            "Unable to update client resource."
+        );
+      }
+    };
 
   /* ============================================================
      VIEW CLIENT
   ============================================================ */
 
-  const handleViewClient = (client) => {
-    setViewingClient(client);
-    setOpenMenu(null);
-    setShowViewClient(true);
+  const handleViewClient =
+    (client) => {
+      setViewingClient(client);
+      setOpenMenu(null);
+      setMenuPosition(null);
+      setShowViewClient(true);
+    };
+
+  /* ============================================================
+     THREE DOT MENU
+     FIXED POSITION - WILL NOT GO UNDER TABLE
+  ============================================================ */
+
+  const handleOpenMenu = (
+    event,
+    clientId
+  ) => {
+    event.stopPropagation();
+
+    const buttonRect =
+      event.currentTarget.getBoundingClientRect();
+
+    const menuWidth = 128;
+    const menuHeight = 84;
+
+    let left =
+      buttonRect.right -
+      menuWidth;
+
+    let top =
+      buttonRect.bottom + 6;
+
+    if (
+      left + menuWidth >
+      window.innerWidth - 10
+    ) {
+      left =
+        window.innerWidth -
+        menuWidth -
+        10;
+    }
+
+    if (left < 10) {
+      left = 10;
+    }
+
+    if (
+      top + menuHeight >
+      window.innerHeight - 10
+    ) {
+      top =
+        buttonRect.top -
+        menuHeight -
+        6;
+    }
+
+    if (top < 10) {
+      top = 10;
+    }
+
+    setMenuPosition({
+      top,
+      left,
+    });
+
+    setOpenMenu(
+      (previous) =>
+        previous === clientId
+          ? null
+          : clientId
+    );
   };
 
   /* ============================================================
      PAGE CLICK
   ============================================================ */
 
-  const handlePageClick = () => {
-    if (openMenu !== null) {
-      setOpenMenu(null);
-    }
-  };
+  const handlePageClick =
+    () => {
+      if (
+        openMenu !== null
+      ) {
+        setOpenMenu(null);
+        setMenuPosition(null);
+      }
+    };
+
+  /* ============================================================
+     MENU COMPONENT
+  ============================================================ */
+
+  const renderActionMenu =
+    () => {
+      if (
+        openMenu === null ||
+        !menuPosition
+      ) {
+        return null;
+      }
+
+      const client =
+        clients.find(
+          (item) =>
+            item.id === openMenu
+        );
+
+      if (!client)
+        return null;
+
+      return createPortal(
+        <div
+          className="fixed z-[9999] w-32 bg-white border border-gray-200 rounded-md shadow-lg py-1"
+          style={{
+            top: `${menuPosition.top}px`,
+            left: `${menuPosition.left}px`,
+          }}
+          onClick={(event) =>
+            event.stopPropagation()
+          }
+        >
+          <button
+            type="button"
+            onClick={() =>
+              handleViewClient(
+                client
+              )
+            }
+            className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+          >
+            View
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              handleEditClient(
+                client
+              )
+            }
+            className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+          >
+            Edit
+          </button>
+        </div>,
+        document.body
+      );
+    };
+
+  /* ============================================================
+     TABLE ROW CLASS
+  ============================================================ */
+
+  const getClientRowClass =
+    (client) => {
+      const isInactive =
+        String(
+          client.status || ""
+        )
+          .trim()
+          .toLowerCase() ===
+        "inactive";
+
+      if (isInactive) {
+        return "border-b last:border-b-0 bg-red-50 text-red-700 border-red-200 hover:bg-red-100";
+      }
+
+      return "border-b border-gray-100 last:border-b-0 text-gray-900 hover:bg-gray-50";
+    };
 
   /* ============================================================
      RENDER
@@ -1354,6 +1885,7 @@ function Clientresource() {
 
       <div className="px-5 py-5">
         {/* ERROR */}
+
         {error && (
           <div className="mb-4 bg-red-50 border border-red-200 rounded-lg px-4 py-3 flex items-center justify-between">
             <p className="text-sm text-red-700">
@@ -1372,6 +1904,7 @@ function Clientresource() {
         )}
 
         {/* SUCCESS */}
+
         {success && (
           <div className="mb-4 bg-green-50 border border-green-200 rounded-lg px-4 py-3 flex items-center justify-between">
             <p className="text-sm text-green-700">
@@ -1401,107 +1934,136 @@ function Clientresource() {
                 FILTERS
             ================================================== */}
 
-            {/* ====================================================
-    FILTERS
-===================================================== */}
+            <div className="mb-5">
+              <div className="bg-white border border-gray-300 rounded-lg p-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  {/* COUNTRY */}
 
-<div className="mb-5">
-  <div className="bg-white border border-gray-300 rounded-lg p-2">
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  <select
+                    value={
+                      countryFilter
+                    }
+                    onChange={(event) =>
+                      setCountryFilter(
+                        event.target.value
+                      )
+                    }
+                    className="w-full h-12 px-4 border border-gray-300 rounded-md bg-white text-base text-gray-900 outline-none focus:border-gray-500"
+                  >
+                    <option value="All">
+                      All Countries
+                    </option>
 
-      {/* COUNTRY */}
-      <select
-        value={countryFilter}
-        onChange={(event) =>
-          setCountryFilter(event.target.value)
-        }
-        className="w-full h-12 px-4 border border-gray-300 rounded-md bg-white text-base text-gray-900 outline-none focus:border-gray-500"
-      >
-        <option value="All">
-          All Countries
-        </option>
+                    {countries.map(
+                      (country) => (
+                        <option
+                          key={
+                            country
+                          }
+                          value={
+                            country
+                          }
+                        >
+                          {country}
+                        </option>
+                      )
+                    )}
+                  </select>
 
-        {countries.map((country) => (
-          <option
-            key={country}
-            value={country}
-          >
-            {country}
-          </option>
-        ))}
-      </select>
+                  {/* MANAGER */}
 
-      {/* ROUTE TYPE */}
-      <select
-        value={routeFilter}
-        onChange={(event) =>
-          setRouteFilter(event.target.value)
-        }
-        className="w-full h-12 px-4 border border-gray-300 rounded-md bg-white text-base text-gray-900 outline-none focus:border-gray-500"
-      >
-        <option value="All">
-          All Route Types
-        </option>
+                  <select
+                    value={
+                      managerFilter
+                    }
+                    onChange={(event) =>
+                      setManagerFilter(
+                        event.target.value
+                      )
+                    }
+                    className="w-full h-12 px-4 border border-gray-300 rounded-md bg-white text-base text-gray-900 outline-none focus:border-gray-500"
+                  >
+                    <option value="All">
+                      All Managers
+                    </option>
 
-        {routeTypes.map((route) => (
-          <option
-            key={route}
-            value={route}
-          >
-            {route}
-          </option>
-        ))}
-      </select>
+                    {managers.map(
+                      (manager) => (
+                        <option
+                          key={
+                            manager
+                          }
+                          value={
+                            manager
+                          }
+                        >
+                          {manager}
+                        </option>
+                      )
+                    )}
+                  </select>
 
-      {/* MANAGER */}
-      <select
-        value={managerFilter}
-        onChange={(event) =>
-          setManagerFilter(event.target.value)
-        }
-        className="w-full h-12 px-4 border border-gray-300 rounded-md bg-white text-base text-gray-900 outline-none focus:border-gray-500"
-      >
-        <option value="All">
-          All Managers
-        </option>
+                  {/* QUALITY DESCRIPTION */}
 
-        {managers.map((manager) => (
-          <option
-            key={manager}
-            value={manager}
-          >
-            {manager}
-          </option>
-        ))}
-      </select>
+                  <select
+                    value={
+                      qualityDescriptionFilter
+                    }
+                    onChange={(event) =>
+                      setQualityDescriptionFilter(
+                        event.target.value
+                      )
+                    }
+                    className="w-full h-12 px-4 border border-gray-300 rounded-md bg-white text-base text-gray-900 outline-none focus:border-gray-500"
+                  >
+                    <option value="All">
+                      All Quality Descriptions
+                    </option>
 
-      {/* QUALITY DESCRIPTION */}
-      <select
-        value={qualityDescriptionFilter}
-        onChange={(event) =>
-          setQualityDescriptionFilter(
-            event.target.value
-          )
-        }
-        className="w-full h-12 px-4 border border-gray-300 rounded-md bg-white text-base text-gray-900 outline-none focus:border-gray-500"
-      >
-        <option value="All">
-          All Quality Descriptions
-        </option>
+                    {qualityDescriptions.map(
+                      (quality) => (
+                        <option
+                          key={
+                            quality
+                          }
+                          value={
+                            quality
+                          }
+                        >
+                          {quality}
+                        </option>
+                      )
+                    )}
+                  </select>
 
-        {qualityDescriptions.map((quality) => (
-          <option
-            key={quality}
-            value={quality}
-          >
-            {quality}
-          </option>
-        ))}
-      </select>
+                  {/* STATUS */}
 
-    </div>
-  </div>
-</div>
+                  <select
+                    value={
+                      statusFilter
+                    }
+                    onChange={(event) =>
+                      setStatusFilter(
+                        event.target.value
+                      )
+                    }
+                    className="w-full h-12 px-4 border border-gray-300 rounded-md bg-white text-base text-gray-900 outline-none focus:border-gray-500"
+                  >
+                    <option value="All">
+                      All Status
+                    </option>
+
+                    <option value="Active">
+                      Active
+                    </option>
+
+                    <option value="Inactive">
+                      Inactive
+                    </option>
+                  </select>
+                </div>
+              </div>
+            </div>
 
             {/* ==================================================
                 SUMMARY
@@ -1509,6 +2071,7 @@ function Clientresource() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
               {/* TOTAL CLIENTS */}
+
               <div className="bg-white border border-gray-200 rounded-lg px-4 py-4">
                 <p className="text-sm text-gray-700">
                   Total Clients
@@ -1520,6 +2083,7 @@ function Clientresource() {
               </div>
 
               {/* TOTAL CAPACITY */}
+
               <div className="bg-white border border-gray-200 rounded-lg px-4 py-4">
                 <p className="text-sm text-gray-700">
                   Total Capacity
@@ -1531,6 +2095,7 @@ function Clientresource() {
               </div>
 
               {/* AVG SELLING RATE */}
+
               <div className="bg-white border border-gray-200 rounded-lg px-4 py-4">
                 <p className="text-sm text-gray-700">
                   Avg Selling Rate
@@ -1542,6 +2107,7 @@ function Clientresource() {
               </div>
 
               {/* HEALTH */}
+
               <div className="bg-white border border-gray-200 rounded-lg px-4 py-4">
                 <p className="text-sm text-gray-700">
                   Client Health Warnings
@@ -1549,7 +2115,8 @@ function Clientresource() {
 
                 <p
                   className={`text-2xl font-medium mt-1 ${
-                    healthWarnings > 0
+                    healthWarnings >
+                    0
                       ? "text-red-700"
                       : "text-gray-900"
                   }`}
@@ -1574,9 +2141,12 @@ function Clientresource() {
                     );
 
                   return (
-                    <div key={group}>
+                    <div
+                      key={
+                        group
+                      }
+                    >
                       <h3 className="text-base font-medium text-gray-800 mb-2">
-                      {" "}
                         <span className="font-normal">
                           {group}
                         </span>
@@ -1584,21 +2154,30 @@ function Clientresource() {
 
                       <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
                         <div className="w-full overflow-x-auto">
-                          <table className="w-full table-fixed border-collapse">
+                          <table className="w-full min-w-[1000px] border-collapse">
                             <colgroup>
-                              <col className="w-[28%]" />
-                              <col className="w-[12%]" />
-                              <col className="w-[12%]" />
-                              <col className="w-[14%]" />
-                              <col className="w-[15%]" />
-                              <col className="w-[14%]" />
-                              <col className="w-[5%]" />
+                              <col className="w-[16%]" />
+                              <col className="w-[17%]" />
+                              <col className="w-[16%]" />
+                              <col className="w-[13%]" />
+                              <col className="w-[10%]" />
+                              <col className="w-[11%]" />
+                              <col className="w-[11%]" />
+                              <col className="w-[6%]" />
                             </colgroup>
 
                             <thead>
                               <tr className="bg-[#fafafa] border-b border-gray-200">
                                 <th className="px-4 py-3 text-left text-sm font-medium">
                                   Customer ID
+                                </th>
+
+                                <th className="px-4 py-3 text-left text-sm font-medium">
+                                  Company Name
+                                </th>
+
+                                <th className="px-4 py-3 text-left text-sm font-medium">
+                                  Account Manager
                                 </th>
 
                                 <th className="px-4 py-3 text-left text-sm font-medium">
@@ -1610,11 +2189,7 @@ function Clientresource() {
                                 </th>
 
                                 <th className="px-4 py-3 text-left text-sm font-medium">
-                                  Credit
-                                </th>
-
-                                <th className="px-4 py-3 text-left text-sm font-medium">
-                                  Support Quality
+                                  Credits
                                 </th>
 
                                 <th className="px-4 py-3 text-left text-sm font-medium">
@@ -1630,7 +2205,7 @@ function Clientresource() {
                               0 ? (
                                 <tr>
                                   <td
-                                    colSpan={7}
+                                    colSpan={8}
                                     className="px-5 py-8 text-center text-sm text-gray-500"
                                   >
                                     No client resources found.
@@ -1638,15 +2213,29 @@ function Clientresource() {
                                 </tr>
                               ) : (
                                 groupData.map(
-                                  (client) => (
+                                  (
+                                    client
+                                  ) => (
                                     <tr
                                       key={
                                         client.id
                                       }
-                                      className="border-b border-gray-100 last:border-b-0 hover:bg-gray-50"
+                                      className={getClientRowClass(
+                                        client
+                                      )}
                                     >
                                       <td className="px-4 py-3 text-sm font-medium truncate">
                                         {client.customerId ||
+                                          "-"}
+                                      </td>
+
+                                      <td className="px-4 py-3 text-sm truncate">
+                                        {client.company ||
+                                          "-"}
+                                      </td>
+
+                                      <td className="px-4 py-3 text-sm truncate">
+                                        {client.accountManager ||
                                           "-"}
                                       </td>
 
@@ -1666,30 +2255,13 @@ function Clientresource() {
                                         )}
                                       </td>
 
-                                      <td className="px-4 py-3 text-sm">
-                                        {client.supportQuality ||
+                                      <td className="px-4 py-3 text-sm font-medium">
+                                        {client.status ||
                                           "-"}
                                       </td>
 
-                                      <td className="px-4 py-3 text-sm">
-                                        <span
-                                          className={
-                                            String(
-                                              client.status ||
-                                                ""
-                                            ).toLowerCase() ===
-                                            "inactive"
-                                              ? "text-red-700"
-                                              : "text-gray-900"
-                                          }
-                                        >
-                                          {client.status ||
-                                            "-"}
-                                        </span>
-                                      </td>
-
                                       <td
-                                        className="px-2 py-3 relative text-center"
+                                        className="px-2 py-3 text-center"
                                         onClick={(
                                           event
                                         ) =>
@@ -1697,45 +2269,20 @@ function Clientresource() {
                                         }
                                       >
                                         <button
-                                          onClick={() =>
-                                            setOpenMenu(
-                                              openMenu ===
-                                                client.id
-                                                ? null
-                                                : client.id
+                                          type="button"
+                                          onClick={(
+                                            event
+                                          ) =>
+                                            handleOpenMenu(
+                                              event,
+                                              client.id
                                             )
                                           }
-                                          className="w-8 h-8 mx-auto flex items-center justify-center rounded-md hover:bg-gray-100 text-gray-700 text-lg"
+                                          className="w-8 h-8 mx-auto flex items-center justify-center rounded-md hover:bg-black/5 text-gray-700 text-lg"
+                                          aria-label="Client actions"
                                         >
                                           ⋮
                                         </button>
-
-                                        {openMenu ===
-                                          client.id && (
-                                          <div className="absolute right-2 top-10 z-30 w-32 bg-white border border-gray-200 rounded-md shadow-lg">
-                                            <button
-                                              onClick={() =>
-                                                handleViewClient(
-                                                  client
-                                                )
-                                              }
-                                              className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
-                                            >
-                                              View
-                                            </button>
-
-                                            <button
-                                              onClick={() =>
-                                                handleEditClient(
-                                                  client
-                                                )
-                                              }
-                                              className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
-                                            >
-                                              Edit
-                                            </button>
-                                          </div>
-                                        )}
                                       </td>
                                     </tr>
                                   )
@@ -1750,14 +2297,16 @@ function Clientresource() {
                 }
               )}
 
-              {/* RESOURCES WITHOUT QUALITY DESCRIPTION */}
+              {/* ==================================================
+                  RESOURCES WITHOUT QUALITY DESCRIPTION
+              ================================================== */}
+
               {filteredClients.some(
                 (client) =>
                   !client.qualityDescription
               ) && (
                 <div>
                   <h3 className="text-base font-medium text-gray-800 mb-2">
-                    Quality Group:{" "}
                     <span className="font-normal">
                       Unassigned
                     </span>
@@ -1765,21 +2314,30 @@ function Clientresource() {
 
                   <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
                     <div className="w-full overflow-x-auto">
-                      <table className="w-full table-fixed border-collapse">
+                      <table className="w-full min-w-[1000px] border-collapse">
                         <colgroup>
-                          <col className="w-[28%]" />
-                          <col className="w-[12%]" />
-                          <col className="w-[12%]" />
-                          <col className="w-[14%]" />
-                          <col className="w-[15%]" />
-                          <col className="w-[14%]" />
-                          <col className="w-[5%]" />
+                          <col className="w-[16%]" />
+                          <col className="w-[17%]" />
+                          <col className="w-[16%]" />
+                          <col className="w-[13%]" />
+                          <col className="w-[10%]" />
+                          <col className="w-[11%]" />
+                          <col className="w-[11%]" />
+                          <col className="w-[6%]" />
                         </colgroup>
 
                         <thead>
                           <tr className="bg-[#fafafa] border-b border-gray-200">
                             <th className="px-4 py-3 text-left text-sm font-medium">
                               Customer ID
+                            </th>
+
+                            <th className="px-4 py-3 text-left text-sm font-medium">
+                              Company Name
+                            </th>
+
+                            <th className="px-4 py-3 text-left text-sm font-medium">
+                              Account Manager
                             </th>
 
                             <th className="px-4 py-3 text-left text-sm font-medium">
@@ -1791,18 +2349,14 @@ function Clientresource() {
                             </th>
 
                             <th className="px-4 py-3 text-left text-sm font-medium">
-                              Credit
-                            </th>
-
-                            <th className="px-4 py-3 text-left text-sm font-medium">
-                              Support Quality
+                              Credits
                             </th>
 
                             <th className="px-4 py-3 text-left text-sm font-medium">
                               Status
                             </th>
 
-                            <th><th className="w-12 px-2"></th></th>
+                            <th></th>
                           </tr>
                         </thead>
 
@@ -1813,15 +2367,29 @@ function Clientresource() {
                                 !client.qualityDescription
                             )
                             .map(
-                              (client) => (
+                              (
+                                client
+                              ) => (
                                 <tr
                                   key={
                                     client.id
                                   }
-                                  className="border-b border-gray-100 last:border-b-0 hover:bg-gray-50"
+                                  className={getClientRowClass(
+                                    client
+                                  )}
                                 >
-                                  <td className="px-4 py-3 text-sm font-medium">
+                                  <td className="px-4 py-3 text-sm font-medium truncate">
                                     {client.customerId ||
+                                      "-"}
+                                  </td>
+
+                                  <td className="px-4 py-3 text-sm truncate">
+                                    {client.company ||
+                                      "-"}
+                                  </td>
+
+                                  <td className="px-4 py-3 text-sm truncate">
+                                    {client.accountManager ||
                                       "-"}
                                   </td>
 
@@ -1841,18 +2409,13 @@ function Clientresource() {
                                     )}
                                   </td>
 
-                                  <td className="px-4 py-3 text-sm">
-                                    {client.supportQuality ||
-                                      "-"}
-                                  </td>
-
-                                  <td className="px-4 py-3 text-sm">
+                                  <td className="px-4 py-3 text-sm font-medium">
                                     {client.status ||
                                       "-"}
                                   </td>
 
                                   <td
-                                    className="px-2 py-3 relative text-center"
+                                    className="px-2 py-3 text-center"
                                     onClick={(
                                       event
                                     ) =>
@@ -1860,45 +2423,20 @@ function Clientresource() {
                                     }
                                   >
                                     <button
-                                      onClick={() =>
-                                        setOpenMenu(
-                                          openMenu ===
-                                            client.id
-                                            ? null
-                                            : client.id
+                                      type="button"
+                                      onClick={(
+                                        event
+                                      ) =>
+                                        handleOpenMenu(
+                                          event,
+                                          client.id
                                         )
                                       }
-                                      className="w-8 h-8 mx-auto flex items-center justify-center rounded-md hover:bg-gray-100 text-gray-700 text-lg"
+                                      className="w-8 h-8 mx-auto flex items-center justify-center rounded-md hover:bg-black/5 text-gray-700 text-lg"
+                                      aria-label="Client actions"
                                     >
                                       ⋮
                                     </button>
-
-                                    {openMenu ===
-                                      client.id && (
-                                      <div className="absolute right-2 top-10 z-30 w-32 bg-white border border-gray-200 rounded-md shadow-lg">
-                                        <button
-                                          onClick={() =>
-                                            handleViewClient(
-                                              client
-                                            )
-                                          }
-                                          className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
-                                        >
-                                          View
-                                        </button>
-
-                                        <button
-                                          onClick={() =>
-                                            handleEditClient(
-                                              client
-                                            )
-                                          }
-                                          className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
-                                        >
-                                          Edit
-                                        </button>
-                                      </div>
-                                    )}
                                   </td>
                                 </tr>
                               )
@@ -1910,7 +2448,8 @@ function Clientresource() {
                 </div>
               )}
 
-              {filteredClients.length === 0 && (
+              {filteredClients.length ===
+                0 && (
                 <div className="bg-white border border-gray-200 rounded-lg p-8 text-center">
                   <p className="text-sm text-gray-500">
                     No client resources available.
@@ -1923,13 +2462,21 @@ function Clientresource() {
       </div>
 
       {/* ========================================================
+          ACTION MENU PORTAL
+      ======================================================== */}
+
+      {renderActionMenu()}
+
+      {/* ========================================================
           ADD CLIENT MODAL
       ======================================================== */}
 
       {showAddClient && (
         <div
           className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center p-4"
-          onClick={handleCloseAddClient}
+          onClick={
+            handleCloseAddClient
+          }
         >
           <div
             className="bg-white w-full max-w-2xl rounded-lg shadow-xl max-h-[90vh] overflow-y-auto"
@@ -1950,7 +2497,9 @@ function Clientresource() {
               </div>
 
               <button
-                onClick={handleCloseAddClient}
+                onClick={
+                  handleCloseAddClient
+                }
                 className="text-gray-500 hover:text-gray-900 text-xl"
               >
                 ×
@@ -1958,10 +2507,13 @@ function Clientresource() {
             </div>
 
             <form
-              onSubmit={handleAddClient}
+              onSubmit={
+                handleAddClient
+              }
               className="p-5"
             >
               {/* CUSTOMER ID */}
+
               <div className="mb-5">
                 <label className="block text-sm text-gray-700 mb-1.5">
                   Customer ID
@@ -1971,7 +2523,9 @@ function Clientresource() {
                   <input
                     required
                     type="text"
-                    value={customerSearch}
+                    value={
+                      customerSearch
+                    }
                     onChange={
                       handleCustomerSearchChange
                     }
@@ -1985,9 +2539,12 @@ function Clientresource() {
                         );
                       }
                     }}
-                    onKeyDown={(event) => {
+                    onKeyDown={(
+                      event
+                    ) => {
                       if (
-                        event.key === "Enter"
+                        event.key ===
+                        "Enter"
                       ) {
                         event.preventDefault();
 
@@ -2061,7 +2618,10 @@ function Clientresource() {
               </div>
 
               {/* AUTO FETCHED CUSTOMER DATA */}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+                {/* COMPANY */}
+
                 <div>
                   <label className="block text-sm text-gray-700 mb-1.5">
                     Company
@@ -2071,13 +2631,16 @@ function Clientresource() {
                     value={
                       selectedCustomer
                         ?.company
-                        ?.company_name || ""
+                        ?.company_name ||
+                      ""
                     }
                     readOnly
                     className="w-full h-10 border border-gray-200 bg-gray-50 rounded-md px-3 text-sm text-gray-700 outline-none"
                     placeholder="Automatically fetched"
                   />
                 </div>
+
+                {/* ACCOUNT MANAGER */}
 
                 <div>
                   <label className="block text-sm text-gray-700 mb-1.5">
@@ -2088,13 +2651,16 @@ function Clientresource() {
                     value={
                       selectedCustomer
                         ?.company
-                        ?.account_manager || ""
+                        ?.account_manager ||
+                      ""
                     }
                     readOnly
                     className="w-full h-10 border border-gray-200 bg-gray-50 rounded-md px-3 text-sm text-gray-700 outline-none"
                     placeholder="Automatically fetched"
                   />
                 </div>
+
+                {/* COUNTRY - EDITABLE */}
 
                 <div>
                   <label className="block text-sm text-gray-700 mb-1.5">
@@ -2102,20 +2668,34 @@ function Clientresource() {
                   </label>
 
                   <input
+                    type="text"
                     value={
-                      selectedCustomer
-                        ?.company
-                        ?.country || ""
+                      newClient.country ||
+                      ""
                     }
-                    readOnly
-                    className="w-full h-10 border border-gray-200 bg-gray-50 rounded-md px-3 text-sm text-gray-700 outline-none"
-                    placeholder="Automatically fetched"
+                    onChange={(
+                      event
+                    ) =>
+                      setNewClient(
+                        (previous) => ({
+                          ...previous,
+                          country:
+                            event.target
+                              .value,
+                        })
+                      )
+                    }
+                    className="w-full h-10 border border-gray-300 rounded-md px-3 text-sm text-gray-900 outline-none focus:border-gray-500"
+                    placeholder="Enter country"
                   />
                 </div>
               </div>
 
               {/* RESOURCE DATA */}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* SELLING RATE */}
+
                 <div>
                   <label className="block text-sm text-gray-700 mb-1.5">
                     Selling Rate
@@ -2128,12 +2708,15 @@ function Clientresource() {
                     value={
                       newClient.sellingRate
                     }
-                    onChange={(event) =>
+                    onChange={(
+                      event
+                    ) =>
                       setNewClient(
                         (previous) => ({
                           ...previous,
                           sellingRate:
-                            event.target.value,
+                            event.target
+                              .value,
                         })
                       )
                     }
@@ -2141,6 +2724,8 @@ function Clientresource() {
                     placeholder="Enter selling rate"
                   />
                 </div>
+
+                {/* PORTS */}
 
                 <div>
                   <label className="block text-sm text-gray-700 mb-1.5">
@@ -2152,12 +2737,15 @@ function Clientresource() {
                     value={
                       newClient.ports
                     }
-                    onChange={(event) =>
+                    onChange={(
+                      event
+                    ) =>
                       setNewClient(
                         (previous) => ({
                           ...previous,
                           ports:
-                            event.target.value,
+                            event.target
+                              .value,
                         })
                       )
                     }
@@ -2165,6 +2753,8 @@ function Clientresource() {
                     placeholder="Enter ports"
                   />
                 </div>
+
+                {/* CREDIT */}
 
                 <div>
                   <label className="block text-sm text-gray-700 mb-1.5">
@@ -2177,12 +2767,15 @@ function Clientresource() {
                     value={
                       newClient.credit
                     }
-                    onChange={(event) =>
+                    onChange={(
+                      event
+                    ) =>
                       setNewClient(
                         (previous) => ({
                           ...previous,
                           credit:
-                            event.target.value,
+                            event.target
+                              .value,
                         })
                       )
                     }
@@ -2191,28 +2784,7 @@ function Clientresource() {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm text-gray-700 mb-1.5">
-                    Route Type
-                  </label>
-
-                  <input
-                    value={
-                      newClient.routeType
-                    }
-                    onChange={(event) =>
-                      setNewClient(
-                        (previous) => ({
-                          ...previous,
-                          routeType:
-                            event.target.value,
-                        })
-                      )
-                    }
-                    className="w-full h-10 border border-gray-300 rounded-md px-3 text-sm outline-none"
-                    placeholder="Enter route type"
-                  />
-                </div>
+                {/* SUPPORT QUALITY */}
 
                 <div>
                   <label className="block text-sm text-gray-700 mb-1.5">
@@ -2224,12 +2796,15 @@ function Clientresource() {
                     value={
                       newClient.supportQuality
                     }
-                    onChange={(event) =>
+                    onChange={(
+                      event
+                    ) =>
                       setNewClient(
                         (previous) => ({
                           ...previous,
                           supportQuality:
-                            event.target.value,
+                            event.target
+                              .value,
                         })
                       )
                     }
@@ -2237,6 +2812,8 @@ function Clientresource() {
                     placeholder="Enter support quality"
                   />
                 </div>
+
+                {/* STATUS */}
 
                 <div>
                   <label className="block text-sm text-gray-700 mb-1.5">
@@ -2248,12 +2825,15 @@ function Clientresource() {
                     value={
                       newClient.status
                     }
-                    onChange={(event) =>
+                    onChange={(
+                      event
+                    ) =>
                       setNewClient(
                         (previous) => ({
                           ...previous,
                           status:
-                            event.target.value,
+                            event.target
+                              .value,
                         })
                       )
                     }
@@ -2262,44 +2842,133 @@ function Clientresource() {
                   />
                 </div>
 
+                {/* QUALITY DESCRIPTION */}
+
                 <div className="md:col-span-2">
                   <label className="block text-sm text-gray-700 mb-1.5">
                     Quality Description
                   </label>
 
-                  <select
-                    value={
-                      newClient.qualityDescriptionId
-                    }
-                    onChange={(event) =>
-                      setNewClient(
-                        (previous) => ({
-                          ...previous,
-                          qualityDescriptionId:
-                            event.target.value,
-                        })
-                      )
-                    }
-                    className="w-full h-10 border border-gray-300 rounded-md px-3 text-sm outline-none bg-white"
-                  >
-                    <option value="">
-                      Select quality description
-                    </option>
-
-                    {qualityDescriptionsData.map(
-                      (quality) => (
-                        <option
-                          key={quality.id}
-                          value={quality.id}
-                        >
-                          {getQualityDescription(
-                            quality
-                          ) ||
-                            `Quality #${quality.id}`}
+                  {!useManualQualityDescription ? (
+                    <>
+                      <select
+                        value={
+                          newClient.qualityDescriptionId
+                        }
+                        onChange={(
+                          event
+                        ) =>
+                          setNewClient(
+                            (previous) => ({
+                              ...previous,
+                              qualityDescriptionId:
+                                event.target
+                                  .value,
+                              manualQualityDescription:
+                                "",
+                            })
+                          )
+                        }
+                        className="w-full h-10 border border-gray-300 rounded-md px-3 text-sm outline-none bg-white"
+                      >
+                        <option value="">
+                          Select quality description
                         </option>
-                      )
-                    )}
-                  </select>
+
+                        {qualityDescriptionsData.map(
+                          (
+                            quality
+                          ) => (
+                            <option
+                              key={
+                                quality.id
+                              }
+                              value={
+                                quality.id
+                              }
+                            >
+                              {getQualityDescription(
+                                quality
+                              ) ||
+                                `Quality #${quality.id}`}
+                            </option>
+                          )
+                        )}
+                      </select>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUseManualQualityDescription(
+                            true
+                          );
+
+                          setNewClient(
+                            (
+                              previous
+                            ) => ({
+                              ...previous,
+                              qualityDescriptionId:
+                                "",
+                              manualQualityDescription:
+                                "",
+                            })
+                          );
+                        }}
+                        className="mt-2 text-sm text-blue-600 hover:text-blue-800"
+                      >
+                        + Enter Quality Description Manually
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <input
+                        type="text"
+                        value={
+                          newClient.manualQualityDescription
+                        }
+                        onChange={(
+                          event
+                        ) =>
+                          setNewClient(
+                            (
+                              previous
+                            ) => ({
+                              ...previous,
+                              manualQualityDescription:
+                                event
+                                  .target
+                                  .value,
+                            })
+                          )
+                        }
+                        placeholder="Enter quality description manually"
+                        className="w-full h-10 border border-gray-300 rounded-md px-3 text-sm outline-none focus:border-gray-500"
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUseManualQualityDescription(
+                            false
+                          );
+
+                          setNewClient(
+                            (
+                              previous
+                            ) => ({
+                              ...previous,
+                              manualQualityDescription:
+                                "",
+                            })
+                          );
+                        }}
+                        className="mt-2 text-sm text-gray-500 hover:text-gray-800"
+                      >
+                        ← Select from existing descriptions
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -2335,8 +3004,12 @@ function Clientresource() {
           <div
             className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center p-4"
             onClick={() => {
-              setShowEditClient(false);
-              setEditingClient(null);
+              setShowEditClient(
+                false
+              );
+              setEditingClient(
+                null
+              );
             }}
           >
             <div
@@ -2366,10 +3039,14 @@ function Clientresource() {
               </div>
 
               <form
-                onSubmit={handleSaveEdit}
+                onSubmit={
+                  handleSaveEdit
+                }
                 className="p-5"
               >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* CUSTOMER ID */}
+
                   <div>
                     <label className="block text-sm text-gray-700 mb-1.5">
                       Customer ID
@@ -2377,13 +3054,15 @@ function Clientresource() {
 
                     <input
                       value={
-                        editingClient.customerId ||
+                        editingClient.customerId ||   
                         ""
                       }
                       readOnly
                       className="w-full h-10 border border-gray-200 bg-gray-50 rounded-md px-3 text-sm outline-none"
                     />
                   </div>
+
+                  {/* COMPANY */}
 
                   <div>
                     <label className="block text-sm text-gray-700 mb-1.5">
@@ -2400,6 +3079,8 @@ function Clientresource() {
                     />
                   </div>
 
+                  {/* ACCOUNT MANAGER */}
+
                   <div>
                     <label className="block text-sm text-gray-700 mb-1.5">
                       Account Manager
@@ -2415,6 +3096,8 @@ function Clientresource() {
                     />
                   </div>
 
+                  {/* COUNTRY */}
+
                   <div>
                     <label className="block text-sm text-gray-700 mb-1.5">
                       Country
@@ -2425,10 +3108,25 @@ function Clientresource() {
                         editingClient.country ||
                         ""
                       }
-                      readOnly
-                      className="w-full h-10 border border-gray-200 bg-gray-50 rounded-md px-3 text-sm outline-none"
+                      onChange={(
+                        event
+                      ) =>
+                        setEditingClient(
+                          (
+                            previous
+                          ) => ({
+                            ...previous,
+                            country:
+                              event.target
+                                .value,
+                          })
+                        )
+                      }
+                      className="w-full h-10 border border-gray-300 rounded-md px-3 text-sm outline-none"
                     />
                   </div>
+
+                  {/* SELLING RATE */}
 
                   <div>
                     <label className="block text-sm text-gray-700 mb-1.5">
@@ -2442,18 +3140,25 @@ function Clientresource() {
                       value={
                         editingClient.sellingRate
                       }
-                      onChange={(event) =>
+                      onChange={(
+                        event
+                      ) =>
                         setEditingClient(
-                          (previous) => ({
+                          (
+                            previous
+                          ) => ({
                             ...previous,
                             sellingRate:
-                              event.target.value,
+                              event.target
+                                .value,
                           })
                         )
                       }
                       className="w-full h-10 border border-gray-300 rounded-md px-3 text-sm outline-none"
                     />
                   </div>
+
+                  {/* PORTS */}
 
                   <div>
                     <label className="block text-sm text-gray-700 mb-1.5">
@@ -2465,18 +3170,25 @@ function Clientresource() {
                       value={
                         editingClient.ports
                       }
-                      onChange={(event) =>
+                      onChange={(
+                        event
+                      ) =>
                         setEditingClient(
-                          (previous) => ({
+                          (
+                            previous
+                          ) => ({
                             ...previous,
                             ports:
-                              event.target.value,
+                              event.target
+                                .value,
                           })
                         )
                       }
                       className="w-full h-10 border border-gray-300 rounded-md px-3 text-sm outline-none"
                     />
                   </div>
+
+                  {/* CREDIT */}
 
                   <div>
                     <label className="block text-sm text-gray-700 mb-1.5">
@@ -2489,18 +3201,29 @@ function Clientresource() {
                       value={
                         editingClient.credit
                       }
-                      onChange={(event) =>
+                      onChange={(
+                        event
+                      ) =>
                         setEditingClient(
-                          (previous) => ({
+                          (
+                            previous
+                          ) => ({
                             ...previous,
                             credit:
-                              event.target.value,
+                              event.target
+                                .value,
                           })
                         )
                       }
                       className="w-full h-10 border border-gray-300 rounded-md px-3 text-sm outline-none"
                     />
                   </div>
+
+                  {/* ROUTE TYPE
+                      Kept here because this is your existing
+                      resource data. It has only been removed
+                      from the Add Client form as requested.
+                  */}
 
                   <div>
                     <label className="block text-sm text-gray-700 mb-1.5">
@@ -2512,18 +3235,25 @@ function Clientresource() {
                         editingClient.routeType ||
                         ""
                       }
-                      onChange={(event) =>
+                      onChange={(
+                        event
+                      ) =>
                         setEditingClient(
-                          (previous) => ({
+                          (
+                            previous
+                          ) => ({
                             ...previous,
                             routeType:
-                              event.target.value,
+                              event.target
+                                .value,
                           })
                         )
                       }
                       className="w-full h-10 border border-gray-300 rounded-md px-3 text-sm outline-none"
                     />
                   </div>
+
+                  {/* SUPPORT QUALITY */}
 
                   <div>
                     <label className="block text-sm text-gray-700 mb-1.5">
@@ -2535,18 +3265,25 @@ function Clientresource() {
                         editingClient.supportQuality ||
                         ""
                       }
-                      onChange={(event) =>
+                      onChange={(
+                        event
+                      ) =>
                         setEditingClient(
-                          (previous) => ({
+                          (
+                            previous
+                          ) => ({
                             ...previous,
                             supportQuality:
-                              event.target.value,
+                              event.target
+                                .value,
                           })
                         )
                       }
                       className="w-full h-10 border border-gray-300 rounded-md px-3 text-sm outline-none"
                     />
                   </div>
+
+                  {/* STATUS */}
 
                   <div>
                     <label className="block text-sm text-gray-700 mb-1.5">
@@ -2558,18 +3295,25 @@ function Clientresource() {
                         editingClient.status ||
                         ""
                       }
-                      onChange={(event) =>
+                      onChange={(
+                        event
+                      ) =>
                         setEditingClient(
-                          (previous) => ({
+                          (
+                            previous
+                          ) => ({
                             ...previous,
                             status:
-                              event.target.value,
+                              event.target
+                                .value,
                           })
                         )
                       }
                       className="w-full h-10 border border-gray-300 rounded-md px-3 text-sm outline-none"
                     />
                   </div>
+
+                  {/* QUALITY DESCRIPTION */}
 
                   <div className="md:col-span-2">
                     <label className="block text-sm text-gray-700 mb-1.5">
@@ -2581,12 +3325,17 @@ function Clientresource() {
                         editingClient.qualityDescriptionId ||
                         ""
                       }
-                      onChange={(event) =>
+                      onChange={(
+                        event
+                      ) =>
                         setEditingClient(
-                          (previous) => ({
+                          (
+                            previous
+                          ) => ({
                             ...previous,
                             qualityDescriptionId:
-                              event.target.value,
+                              event.target
+                                .value,
                           })
                         )
                       }
@@ -2597,10 +3346,16 @@ function Clientresource() {
                       </option>
 
                       {qualityDescriptionsData.map(
-                        (quality) => (
+                        (
+                          quality
+                        ) => (
                           <option
-                            key={quality.id}
-                            value={quality.id}
+                            key={
+                              quality.id
+                            }
+                            value={
+                              quality.id
+                            }
                           >
                             {getQualityDescription(
                               quality
@@ -2650,7 +3405,9 @@ function Clientresource() {
           <div
             className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center p-4"
             onClick={() =>
-              setShowViewClient(false)
+              setShowViewClient(
+                false
+              )
             }
           >
             <div
@@ -2684,6 +3441,8 @@ function Clientresource() {
 
               <div className="p-6">
                 <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+                  {/* CUSTOMER ID */}
+
                   <div>
                     <p className="text-xs text-gray-500">
                       Customer ID
@@ -2694,6 +3453,8 @@ function Clientresource() {
                         "-"}
                     </p>
                   </div>
+
+                  {/* COMPANY */}
 
                   <div>
                     <p className="text-xs text-gray-500">
@@ -2706,6 +3467,8 @@ function Clientresource() {
                     </p>
                   </div>
 
+                  {/* ACCOUNT MANAGER */}
+
                   <div>
                     <p className="text-xs text-gray-500">
                       Account Manager
@@ -2716,6 +3479,8 @@ function Clientresource() {
                         "-"}
                     </p>
                   </div>
+
+                  {/* COUNTRY */}
 
                   <div>
                     <p className="text-xs text-gray-500">
@@ -2728,6 +3493,8 @@ function Clientresource() {
                     </p>
                   </div>
 
+                  {/* SELLING RATE */}
+
                   <div>
                     <p className="text-xs text-gray-500">
                       Selling Rate
@@ -2739,6 +3506,8 @@ function Clientresource() {
                     </p>
                   </div>
 
+                  {/* PORTS */}
+
                   <div>
                     <p className="text-xs text-gray-500">
                       Ports
@@ -2749,6 +3518,8 @@ function Clientresource() {
                         "-"}
                     </p>
                   </div>
+
+                  {/* CREDIT */}
 
                   <div>
                     <p className="text-xs text-gray-500">
@@ -2762,6 +3533,8 @@ function Clientresource() {
                     </p>
                   </div>
 
+                  {/* ROUTE TYPE */}
+
                   <div>
                     <p className="text-xs text-gray-500">
                       Route Type
@@ -2772,6 +3545,8 @@ function Clientresource() {
                         "-"}
                     </p>
                   </div>
+
+                  {/* SUPPORT QUALITY */}
 
                   <div>
                     <p className="text-xs text-gray-500">
@@ -2784,16 +3559,32 @@ function Clientresource() {
                     </p>
                   </div>
 
+                  {/* STATUS */}
+
                   <div>
                     <p className="text-xs text-gray-500">
                       Status
                     </p>
 
-                    <p className="text-sm font-medium text-gray-900 mt-1">
+                    <p
+                      className={`text-sm font-medium mt-1 ${
+                        String(
+                          viewingClient.status ||
+                            ""
+                        )
+                          .trim()
+                          .toLowerCase() ===
+                        "inactive"
+                          ? "text-red-700"
+                          : "text-gray-900"
+                      }`}
+                    >
                       {viewingClient.status ||
                         "-"}
                     </p>
                   </div>
+
+                  {/* QUALITY DESCRIPTION */}
 
                   <div className="col-span-2">
                     <p className="text-xs text-gray-500">

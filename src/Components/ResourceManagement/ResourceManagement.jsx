@@ -39,6 +39,7 @@ function Vendorresource() {
   const [countryFilter, setCountryFilter] = useState("All");
   const [qualityFilter, setQualityFilter] = useState("All");
   const [managerFilter, setManagerFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState("All");
 
   // ============================================================
   // MODALS
@@ -128,8 +129,6 @@ function Vendorresource() {
 
       // ----------------------------------------------------------
       // FETCH ALL REQUIRED TABLES IN PARALLEL
-      // This reduces the waiting time because Supabase requests
-      // are not executed one after another.
       // ----------------------------------------------------------
 
       const [
@@ -469,11 +468,16 @@ function Vendorresource() {
         managerFilter === "All" ||
         vendor.accountManager === managerFilter;
 
+      const matchesStatus =
+        statusFilter === "All" ||
+        vendor.status === statusFilter;
+
       return (
         matchesSearch &&
         matchesCountry &&
         matchesQuality &&
-        matchesManager
+        matchesManager &&
+        matchesStatus
       );
     });
   }, [
@@ -482,6 +486,7 @@ function Vendorresource() {
     countryFilter,
     qualityFilter,
     managerFilter,
+    statusFilter,
   ]);
 
   // ============================================================
@@ -1361,7 +1366,7 @@ function Vendorresource() {
 
         <div className="mb-5">
           <div className="bg-white border border-gray-300 rounded-lg p-2">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
 
               {/* COUNTRY */}
 
@@ -1448,6 +1453,30 @@ function Vendorresource() {
                     </option>
                   )
                 )}
+              </select>
+
+              {/* STATUS */}
+
+              <select
+                value={statusFilter}
+                onChange={(e) =>
+                  setStatusFilter(
+                    e.target.value
+                  )
+                }
+                className="w-full h-12 px-4 border border-gray-300 rounded-md bg-white text-base text-gray-900 outline-none focus:border-gray-500"
+              >
+                <option value="All">
+                  All Status
+                </option>
+
+                <option value="ACTIVE">
+                  Active
+                </option>
+
+                <option value="INACTIVE">
+                  Inactive
+                </option>
               </select>
 
             </div>
@@ -1970,11 +1999,7 @@ function Vendorresource() {
                 </div>
               </div>
 
-              {/* RESOURCE DATA */}
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                {/* BUYING RATE */}
 
                 <FormField
                   label="Buying Rate"
@@ -1997,8 +2022,6 @@ function Vendorresource() {
                     placeholder="0.0125"
                   />
                 </FormField>
-
-                {/* PORTS */}
 
                 <FormField label="Ports">
                   <input
@@ -2156,7 +2179,6 @@ function Vendorresource() {
                   </FormField>
                 )}
 
-                {/* COUNTRY */}
 
                 <FormField label="Quality Country">
                   <input
@@ -2285,9 +2307,7 @@ function Vendorresource() {
         </div>
       )}
 
-      {/* ======================================================
-          VIEW MODAL
-      ======================================================= */}
+    
 
       {showViewVendor &&
         viewingVendor && (
@@ -2828,9 +2848,7 @@ function Vendorresource() {
   );
 }
 
-// ============================================================
-// FORM FIELD
-// ============================================================
+
 
 function FormField({
   label,
