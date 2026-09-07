@@ -1806,7 +1806,7 @@ function Clientresource() {
         "inactive";
 
       if (isInactive) {
-        return "border-b last:border-b-0 bg-red-50 text-red-700 border-red-200 hover:bg-red-100";
+        return "border-b last:border-b-0 bg-gray-50 text-red-700 border-gray-100 hover:bg-red-50";
       }
 
       return "border-b border-gray-100 last:border-b-0 text-gray-900 hover:bg-gray-50";
@@ -1835,14 +1835,14 @@ function Clientresource() {
           <div className="flex items-center gap-2">
             <Link
               to="/resource-management"
-              className="px-4 py-2 rounded-md text-sm font-medium bg-purple-100 text-purple-800 hover:bg-purple-200"
+              className="px-4 py-2 rounded-md text-sm font-normal bg-purple-100 text-purple-800 hover:bg-purple-200"
             >
               Vendor Resources
             </Link>
 
             <Link
               to="/resource-management/clients"
-              className="px-4 py-2 rounded-md text-sm font-medium bg-green-100 text-green-800 hover:bg-green-200"
+              className="px-4 py-2 rounded-md text-sm font-normal bg-green-100 text-green-800 hover:bg-green-200"
             >
               Client Resources
             </Link>
@@ -1871,7 +1871,7 @@ function Clientresource() {
               onClick={
                 handleOpenAddClient
               }
-              className="h-9 px-4 bg-gray-900 text-white rounded-md text-sm font-medium hover:bg-gray-800"
+              className="h-9 px-4 bg-gray-900 text-white rounded-md text-sm font-normal hover:bg-gray-800"
             >
               + Add Client
             </button>
@@ -1896,7 +1896,7 @@ function Clientresource() {
               onClick={() =>
                 setError("")
               }
-              className="text-red-700 font-medium"
+              className="text-red-700 font-normal"
             >
               ×
             </button>
@@ -1915,7 +1915,7 @@ function Clientresource() {
               onClick={() =>
                 setSuccess("")
               }
-              className="text-green-700 font-medium"
+              className="text-green-700 font-normal"
             >
               ×
             </button>
@@ -2077,7 +2077,7 @@ function Clientresource() {
                   Total Clients
                 </p>
 
-                <p className="text-2xl font-medium mt-1">
+                <p className="text-2xl font-normal mt-1">
                   {totalClients}
                 </p>
               </div>
@@ -2089,7 +2089,7 @@ function Clientresource() {
                   Total Capacity
                 </p>
 
-                <p className="text-2xl font-medium mt-1">
+                <p className="text-2xl font-normal mt-1">
                   {totalCapacity} Ports
                 </p>
               </div>
@@ -2101,7 +2101,7 @@ function Clientresource() {
                   Avg Selling Rate
                 </p>
 
-                <p className="text-2xl font-medium mt-1">
+                <p className="text-2xl font-normal mt-1">
                   {avgSellingRate}
                 </p>
               </div>
@@ -2114,7 +2114,7 @@ function Clientresource() {
                 </p>
 
                 <p
-                  className={`text-2xl font-medium mt-1 ${
+                  className={`text-2xl font-normal mt-1 ${
                     healthWarnings >
                     0
                       ? "text-red-700"
@@ -2146,7 +2146,7 @@ function Clientresource() {
                         group
                       }
                     >
-                      <h3 className="text-base font-medium text-gray-800 mb-2">
+                      <h3 className="text-base font-normal text-gray-800 mb-2">
                         <span className="font-normal">
                           {group}
                         </span>
@@ -2154,45 +2154,51 @@ function Clientresource() {
 
                       <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
                         <div className="w-full overflow-x-auto">
-                          <table className="w-full min-w-[1000px] border-collapse">
+                          <table className="w-full min-w-[1000px] table-fixed border-collapse">
                             <colgroup>
-                              <col className="w-[16%]" />
+                              <col className="w-[15%]" />
                               <col className="w-[17%]" />
-                              <col className="w-[16%]" />
-                              <col className="w-[13%]" />
+                              <col className="w-[15%]" />
+                              <col className="w-[11%]" />
+                              <col className="w-[8%]" />
                               <col className="w-[10%]" />
-                              <col className="w-[11%]" />
-                              <col className="w-[11%]" />
+                              <col className="w-[10%]" />
+                              <col className="w-[8%]" />
                               <col className="w-[6%]" />
                             </colgroup>
 
                             <thead>
                               <tr className="bg-[#fafafa] border-b border-gray-200">
-                                <th className="px-4 py-3 text-left text-sm font-medium">
+                                <th className="px-4 py-3 text-left text-sm font-normal whitespace-nowrap">
                                   Customer ID
                                 </th>
 
-                                <th className="px-4 py-3 text-left text-sm font-medium">
+                                <th className="px-4 py-3 text-left text-sm font-normal whitespace-nowrap">
                                   Company Name
                                 </th>
 
-                                <th className="px-4 py-3 text-left text-sm font-medium">
+                                <th className="px-4 py-3 text-left text-sm font-normal whitespace-nowrap">
                                   Account Manager
                                 </th>
 
-                                <th className="px-4 py-3 text-left text-sm font-medium">
+                                <th className="px-4 py-3 text-left text-sm font-normal whitespace-nowrap">
                                   Selling Rate
                                 </th>
 
-                                <th className="px-4 py-3 text-left text-sm font-medium">
+                                <th className="px-4 py-3 text-left text-sm font-normal whitespace-nowrap">
                                   Ports
                                 </th>
 
-                                <th className="px-4 py-3 text-left text-sm font-medium">
+                                <th className="px-4 py-3 text-left text-sm font-normal whitespace-nowrap">
                                   Credits
                                 </th>
 
-                                <th className="px-4 py-3 text-left text-sm font-medium">
+
+                                <th className="px-4 py-3 text-left text-sm font-normal whitespace-nowrap">
+                                  Support Quality
+                                </th>
+
+                                <th className="px-4 py-3 text-left text-sm font-normal whitespace-nowrap">
                                   Status
                                 </th>
 
@@ -2205,7 +2211,7 @@ function Clientresource() {
                               0 ? (
                                 <tr>
                                   <td
-                                    colSpan={8}
+                                    colSpan={9}
                                     className="px-5 py-8 text-center text-sm text-gray-500"
                                   >
                                     No client resources found.
@@ -2224,7 +2230,7 @@ function Clientresource() {
                                         client
                                       )}
                                     >
-                                      <td className="px-4 py-3 text-sm font-medium truncate">
+                                      <td className="px-4 py-3 text-sm font-normal truncate">
                                         {client.customerId ||
                                           "-"}
                                       </td>
@@ -2255,7 +2261,13 @@ function Clientresource() {
                                         )}
                                       </td>
 
-                                      <td className="px-4 py-3 text-sm font-medium">
+
+                                      <td className="px-4 py-3 text-sm">
+                                        {client.supportQuality ||
+                                          "-"}
+                                      </td>
+
+                                      <td className="px-4 py-3 text-sm font-normal">
                                         {client.status ||
                                           "-"}
                                       </td>
@@ -2306,7 +2318,7 @@ function Clientresource() {
                   !client.qualityDescription
               ) && (
                 <div>
-                  <h3 className="text-base font-medium text-gray-800 mb-2">
+                  <h3 className="text-base font-normal text-gray-800 mb-2">
                     <span className="font-normal">
                       Unassigned
                     </span>
@@ -2314,45 +2326,51 @@ function Clientresource() {
 
                   <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
                     <div className="w-full overflow-x-auto">
-                      <table className="w-full min-w-[1000px] border-collapse">
+                      <table className="w-full min-w-[1000px] table-fixed border-collapse">
                         <colgroup>
-                          <col className="w-[16%]" />
-                          <col className="w-[17%]" />
-                          <col className="w-[16%]" />
-                          <col className="w-[13%]" />
-                          <col className="w-[10%]" />
-                          <col className="w-[11%]" />
-                          <col className="w-[11%]" />
-                          <col className="w-[6%]" />
-                        </colgroup>
+                              <col className="w-[15%]" />
+                              <col className="w-[17%]" />
+                              <col className="w-[15%]" />
+                              <col className="w-[11%]" />
+                              <col className="w-[8%]" />
+                              <col className="w-[10%]" />
+                              <col className="w-[10%]" />
+                              <col className="w-[8%]" />
+                              <col className="w-[6%]" />
+                            </colgroup>
 
                         <thead>
                           <tr className="bg-[#fafafa] border-b border-gray-200">
-                            <th className="px-4 py-3 text-left text-sm font-medium">
+                            <th className="px-4 py-3 text-left text-sm font-normal whitespace-nowrap">
                               Customer ID
                             </th>
 
-                            <th className="px-4 py-3 text-left text-sm font-medium">
+                            <th className="px-4 py-3 text-left text-sm font-normal whitespace-nowrap">
                               Company Name
                             </th>
 
-                            <th className="px-4 py-3 text-left text-sm font-medium">
+                            <th className="px-4 py-3 text-left text-sm font-normal whitespace-nowrap">
                               Account Manager
                             </th>
 
-                            <th className="px-4 py-3 text-left text-sm font-medium">
+                            <th className="px-4 py-3 text-left text-sm font-normal whitespace-nowrap">
                               Selling Rate
                             </th>
 
-                            <th className="px-4 py-3 text-left text-sm font-medium">
+                            <th className="px-4 py-3 text-left text-sm font-normal whitespace-nowrap">
                               Ports
                             </th>
 
-                            <th className="px-4 py-3 text-left text-sm font-medium">
+                            <th className="px-4 py-3 text-left text-sm font-normal whitespace-nowrap">
                               Credits
                             </th>
 
-                            <th className="px-4 py-3 text-left text-sm font-medium">
+
+                            <th className="px-4 py-3 text-left text-sm font-normal whitespace-nowrap">
+                              Support Quality
+                            </th>
+
+                            <th className="px-4 py-3 text-left text-sm font-normal whitespace-nowrap">
                               Status
                             </th>
 
@@ -2378,7 +2396,7 @@ function Clientresource() {
                                     client
                                   )}
                                 >
-                                  <td className="px-4 py-3 text-sm font-medium truncate">
+                                  <td className="px-4 py-3 text-sm font-normal truncate">
                                     {client.customerId ||
                                       "-"}
                                   </td>
@@ -2409,7 +2427,13 @@ function Clientresource() {
                                     )}
                                   </td>
 
-                                  <td className="px-4 py-3 text-sm font-medium">
+
+                                  <td className="px-4 py-3 text-sm">
+                                    {client.supportQuality ||
+                                      "-"}
+                                  </td>
+
+                                  <td className="px-4 py-3 text-sm font-normal">
                                     {client.status ||
                                       "-"}
                                   </td>
@@ -2486,7 +2510,7 @@ function Clientresource() {
           >
             <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-medium text-gray-900">
+                <h2 className="text-lg font-normal text-gray-900">
                   Add Client
                 </h2>
 
@@ -2596,7 +2620,7 @@ function Clientresource() {
                               }
                               className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
                             >
-                              <div className="text-sm font-medium text-gray-900">
+                              <div className="text-sm font-normal text-gray-900">
                                 {customer.customer_id ||
                                   "-"}
                               </div>
@@ -3019,7 +3043,7 @@ function Clientresource() {
               }
             >
               <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
-                <h2 className="text-lg font-medium text-gray-900">
+                <h2 className="text-lg font-normal text-gray-900">
                   Edit Client Resource
                 </h2>
 
@@ -3418,7 +3442,7 @@ function Clientresource() {
             >
               <div className="px-6 py-5 border-b border-gray-200 flex items-center justify-between">
                 <div>
-                  <h2 className="text-lg font-medium text-gray-900">
+                  <h2 className="text-lg font-normal text-gray-900">
                     Client Details
                   </h2>
 
@@ -3448,7 +3472,7 @@ function Clientresource() {
                       Customer ID
                     </p>
 
-                    <p className="text-sm font-medium text-gray-900 mt-1">
+                    <p className="text-sm font-normal text-gray-900 mt-1">
                       {viewingClient.customerId ||
                         "-"}
                     </p>
@@ -3461,7 +3485,7 @@ function Clientresource() {
                       Company
                     </p>
 
-                    <p className="text-sm font-medium text-gray-900 mt-1">
+                    <p className="text-sm font-normal text-gray-900 mt-1">
                       {viewingClient.company ||
                         "-"}
                     </p>
@@ -3474,7 +3498,7 @@ function Clientresource() {
                       Account Manager
                     </p>
 
-                    <p className="text-sm font-medium text-gray-900 mt-1">
+                    <p className="text-sm font-normal text-gray-900 mt-1">
                       {viewingClient.accountManager ||
                         "-"}
                     </p>
@@ -3487,7 +3511,7 @@ function Clientresource() {
                       Country
                     </p>
 
-                    <p className="text-sm font-medium text-gray-900 mt-1">
+                    <p className="text-sm font-normal text-gray-900 mt-1">
                       {viewingClient.country ||
                         "-"}
                     </p>
@@ -3500,7 +3524,7 @@ function Clientresource() {
                       Selling Rate
                     </p>
 
-                    <p className="text-sm font-medium text-gray-900 mt-1">
+                    <p className="text-sm font-normal text-gray-900 mt-1">
                       {viewingClient.sellingRate ??
                         "-"}
                     </p>
@@ -3513,7 +3537,7 @@ function Clientresource() {
                       Ports
                     </p>
 
-                    <p className="text-sm font-medium text-gray-900 mt-1">
+                    <p className="text-sm font-normal text-gray-900 mt-1">
                       {viewingClient.ports ??
                         "-"}
                     </p>
@@ -3526,7 +3550,7 @@ function Clientresource() {
                       Credit
                     </p>
 
-                    <p className="text-sm font-medium text-gray-900 mt-1">
+                    <p className="text-sm font-normal text-gray-900 mt-1">
                       {formatCredit(
                         viewingClient.credit
                       )}
@@ -3540,7 +3564,7 @@ function Clientresource() {
                       Route Type
                     </p>
 
-                    <p className="text-sm font-medium text-gray-900 mt-1">
+                    <p className="text-sm font-normal text-gray-900 mt-1">
                       {viewingClient.routeType ||
                         "-"}
                     </p>
@@ -3553,7 +3577,7 @@ function Clientresource() {
                       Support Quality
                     </p>
 
-                    <p className="text-sm font-medium text-gray-900 mt-1">
+                    <p className="text-sm font-normal text-gray-900 mt-1">
                       {viewingClient.supportQuality ||
                         "-"}
                     </p>
@@ -3567,7 +3591,7 @@ function Clientresource() {
                     </p>
 
                     <p
-                      className={`text-sm font-medium mt-1 ${
+                      className={`text-sm font-normal mt-1 ${
                         String(
                           viewingClient.status ||
                             ""
@@ -3591,7 +3615,7 @@ function Clientresource() {
                       Quality Description
                     </p>
 
-                    <p className="text-sm font-medium text-gray-900 mt-1">
+                    <p className="text-sm font-normal text-gray-900 mt-1">
                       {viewingClient.qualityDescription ||
                         "-"}
                     </p>

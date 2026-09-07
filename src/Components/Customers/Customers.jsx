@@ -871,7 +871,7 @@ function Customers() {
                           key={customer.id}
                           className={`border-b border-gray-100 last:border-b-0 transition ${
                             isInactive
-                              ? "text-red-600 hover:bg-red-50"
+                              ? "text-red-600 hover:bg-gray-50"
                               : "hover:bg-gray-50"
                           }`}
                         >
