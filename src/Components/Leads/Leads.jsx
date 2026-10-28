@@ -1,1227 +1,451 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
-import { useNavigate } from "react-router-dom";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../../supabaseClient";
 
 const LEADS_TABLE = "leads";
 const COMPANIES_TABLE = "companies";
 
-function Leads() {
+const STATUS_STYLES = {
+  NEW: "bg-blue-50 text-blue-700",
+  HOT: "bg-red-50 text-red-700",
+  CURRENT: "bg-green-50 text-green-700",
+  OLD: "bg-gray-100 text-gray-600",
+  SPAM: "bg-orange-50 text-orange-700",
+  "NOT WORKING": "bg-gray-100 text-gray-600",
+  ACTIVE: "bg-green-50 text-green-700",
+  INACTIVE: "bg-gray-100 text-gray-600",
+};
+
+function getStatusStyle(status) {
+  const normalized = String(status || "NEW").toUpperCase();
+  return STATUS_STYLES[normalized] || "bg-gray-100 text-gray-600";
+}
+
+function formatDate(value) {
+  if (!value) return "—";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return "—";
+
+  return date.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function SummaryCard({ title, value, description }) {
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-5">
+      <p className="text-sm font-medium text-gray-500">{title}</p>
+
+      <p className="mt-2 text-2xl font-bold text-gray-900">
+        {value}
+      </p>
+
+      {description && (
+        <p className="mt-1 text-xs text-gray-500">{description}</p>
+      )}
+    </div>
+  );
+}
+
+export default function Leads() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [leads, setLeads] = useState([]);
   const [companies, setCompanies] = useState([]);
-
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-
-  const [showModal, setShowModal] = useState(false);
-
-  const [companyName, setCompanyName] = useState("");
-  const [leadId, setLeadId] = useState("");
-  const [accountManager, setAccountManager] = useState("");
-  const [leadSource, setLeadSource] = useState("");
-
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [typeFilter, setTypeFilter] = useState("");
-  const [sourceFilter, setSourceFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  // =========================================================
-  // FETCH DATA FROM NEW SUPABASE DATABASE
-  // =========================================================
+  const success = location.state?.success || "";
 
-  const fetchData = useCallback(async () => {
+  const fetchLeads = useCallback(async () => {
     setLoading(true);
     setError("");
 
     try {
-      const [leadResult, companyResult] = await Promise.all([
+      const [leadsResult, companiesResult] = await Promise.all([
         supabase
           .from(LEADS_TABLE)
           .select("*")
-          .order("created_at", {
-            ascending: false,
-          }),
+          .order("created_at", { ascending: false }),
 
         supabase
           .from(COMPANIES_TABLE)
-          .select("*")
-          .order("created_at", {
-            ascending: false,
-          }),
+          .select("*"),
       ]);
 
-      if (leadResult.error) {
-        throw new Error(
-          `Leads fetch failed: ${leadResult.error.message}`
-        );
+      if (leadsResult.error) {
+        throw leadsResult.error;
       }
 
-      if (companyResult.error) {
-        throw new Error(
-          `Companies fetch failed: ${companyResult.error.message}`
-        );
+      if (companiesResult.error) {
+        throw companiesResult.error;
       }
 
-      const realLeads = Array.isArray(leadResult.data)
-        ? leadResult.data
-        : [];
-
-      const realCompanies = Array.isArray(companyResult.data)
-        ? companyResult.data
-        : [];
-
-      console.log("NEW DATABASE - LEADS:", realLeads);
-      console.log("NEW DATABASE - COMPANIES:", realCompanies);
-
-      setLeads(realLeads);
-      setCompanies(realCompanies);
+      setLeads(leadsResult.data || []);
+      setCompanies(companiesResult.data || []);
     } catch (err) {
-      console.error("Supabase fetch error:", err);
-
-      setError(
-        err?.message ||
-          "Unable to fetch data from Supabase."
-      );
-
-      setLeads([]);
-      setCompanies([]);
+      console.error("Error fetching leads:", err);
+      setError(err.message || "Unable to load leads.");
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // =========================================================
-  // INITIAL FETCH
-  // =========================================================
-
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    fetchLeads();
+  }, [fetchLeads]);
 
-  // =========================================================
-  // COMPANY MAP
-  // =========================================================
-
-  const companyMap = useMemo(() => {
-    const map = {};
+  const companyById = useMemo(() => {
+    const map = new Map();
 
     companies.forEach((company) => {
-      if (
-        company?.id !== null &&
-        company?.id !== undefined
-      ) {
-        map[String(company.id)] = company;
-      }
+      map.set(String(company.id), company);
     });
 
     return map;
   }, [companies]);
 
-  // =========================================================
-  // FILTER OPTIONS
-  // =========================================================
+  const enrichedLeads = useMemo(() => {
+    return leads.map((lead) => {
+      const company = companyById.get(String(lead.company_id));
 
-  const statusOptions = useMemo(() => {
-    return [
-      ...new Set(
-        leads
-          .map((lead) => lead?.status)
-          .filter(
-            (value) =>
-              value !== null &&
-              value !== undefined &&
-              String(value).trim() !== ""
-          )
-          .map((value) => String(value))
-      ),
-    ].sort((a, b) => a.localeCompare(b));
-  }, [leads]);
-
-  const typeOptions = useMemo(() => {
-    return [
-      ...new Set(
-        leads
-          .map((lead) => lead?.company_type)
-          .filter(
-            (value) =>
-              value !== null &&
-              value !== undefined &&
-              String(value).trim() !== ""
-          )
-          .map((value) => String(value))
-      ),
-    ].sort((a, b) => a.localeCompare(b));
-  }, [leads]);
-
-  const sourceOptions = useMemo(() => {
-    return [
-      ...new Set(
-        leads
-          .map((lead) => lead?.lead_source)
-          .filter(
-            (value) =>
-              value !== null &&
-              value !== undefined &&
-              String(value).trim() !== ""
-          )
-          .map((value) => String(value))
-      ),
-    ].sort((a, b) => a.localeCompare(b));
-  }, [leads]);
-
-  // =========================================================
-  // SEARCH + FILTER
-  // =========================================================
+      return {
+        ...lead,
+        company_name:
+          lead.company_name ||
+          company?.company_name ||
+          company?.name ||
+          "—",
+        account_manager:
+          lead.account_manager ||
+          company?.account_manager ||
+          "—",
+      };
+    });
+  }, [leads, companyById]);
 
   const filteredLeads = useMemo(() => {
     const searchValue = search.trim().toLowerCase();
 
-    return leads.filter((lead) => {
-      const company =
-        companyMap[String(lead?.company_id)] || null;
-
-      const searchableValues = [
-        // LEADS
-        lead?.id,
-        lead?.company_id,
-        lead?.lead_id,
-        lead?.lead_source,
-        lead?.company_type,
-        lead?.status,
-        lead?.created_at,
-        lead?.updated_at,
-
-        // COMPANIES
-        company?.id,
-        company?.company_id,
-        company?.company_name,
-        company?.country,
-        company?.email,
-        company?.contact_person,
-        company?.phone,
-        company?.account_manager,
-        company?.status,
-        company?.company_description,
-        company?.created_at,
-        company?.updated_at,
-      ];
-
+    return enrichedLeads.filter((lead) => {
       const matchesSearch =
         !searchValue ||
-        searchableValues.some((value) =>
-          String(value ?? "")
-            .toLowerCase()
-            .includes(searchValue)
+        [
+          lead.company_name,
+          lead.lead_id,
+          lead.account_manager,
+          lead.lead_source,
+          lead.status,
+        ].some((value) =>
+          String(value || "").toLowerCase().includes(searchValue)
         );
+
+      const normalizedStatus = String(lead.status || "NEW").toUpperCase();
 
       const matchesStatus =
-        !statusFilter ||
-        String(lead?.status ?? "").toLowerCase() ===
-          statusFilter.toLowerCase();
+        statusFilter === "ALL" ||
+        normalizedStatus === statusFilter;
 
-      const matchesType =
-        !typeFilter ||
-        String(lead?.company_type ?? "").toLowerCase() ===
-          typeFilter.toLowerCase();
-
-      const matchesSource =
-        !sourceFilter ||
-        String(lead?.lead_source ?? "").toLowerCase() ===
-          sourceFilter.toLowerCase();
-
-      return (
-        matchesSearch &&
-        matchesStatus &&
-        matchesType &&
-        matchesSource
-      );
+      return matchesSearch && matchesStatus;
     });
-  }, [
-    leads,
-    companyMap,
-    search,
-    statusFilter,
-    typeFilter,
-    sourceFilter,
-  ]);
+  }, [enrichedLeads, search, statusFilter]);
 
-  // =========================================================
-  // SUMMARY
-  // =========================================================
-
-  const totalLeads = leads.length;
-
-  const activeCount = leads.filter(
-    (lead) =>
-      String(lead?.status ?? "").toUpperCase() ===
-      "ACTIVE"
-  ).length;
-
-  const pendingCount = leads.filter(
-    (lead) =>
-      String(lead?.status ?? "").toUpperCase() ===
-      "PENDING"
-  ).length;
-
-  const convertedCount = leads.filter((lead) =>
-    ["CUSTOMER", "VENDOR"].includes(
-      String(
-        lead?.company_type ?? ""
-      ).toUpperCase()
-    )
-  ).length;
-
-  // =========================================================
-  // RESET FORM
-  // =========================================================
-
-  const resetForm = () => {
-    setCompanyName("");
-    setLeadId("");
-    setAccountManager("");
-    setLeadSource("");
-  };
-
-  // =========================================================
-  // OPEN MODAL
-  // =========================================================
-
-  const openAddModal = () => {
-    resetForm();
-    setError("");
-    setSuccess("");
-    setShowModal(true);
-  };
-
-  // =========================================================
-  // CLOSE MODAL
-  // =========================================================
-
-  const closeModal = () => {
-    if (saving) return;
-
-    setShowModal(false);
-    resetForm();
-    setError("");
-  };
-
-  // =========================================================
-  // GENERATE COMPANY ID
-  // =========================================================
-
-  const generateCompanyId = (name) => {
-    const clean = String(name || "")
-      .replace(/[^A-Za-z0-9]/g, "")
-      .toUpperCase();
-
-    const prefix =
-      clean.substring(0, 3) || "COM";
-
-    return `${prefix}${Date.now()
-      .toString()
-      .slice(-6)}`;
-  };
-
-  // =========================================================
-  // CREATE LEAD
-  // =========================================================
-
-  const handleAddLead = async (event) => {
-    event.preventDefault();
-
-    setSaving(true);
-    setError("");
-    setSuccess("");
-
-    let newCompany = null;
-
-    try {
-      const companyNameValue =
-        companyName.trim();
-
-      const leadIdValue =
-        leadId.trim();
-
-      const managerValue =
-        accountManager.trim();
-
-      const sourceValue =
-        leadSource.trim();
-
-      if (!companyNameValue) {
-        throw new Error(
-          "Company name is required."
-        );
-      }
-
-      if (!leadIdValue) {
-        throw new Error(
-          "Lead ID is required."
-        );
-      }
-
-      if (!managerValue) {
-        throw new Error(
-          "Account manager is required."
-        );
-      }
-
-      // -------------------------------------------------------
-      // CHECK DUPLICATE LEAD
-      // -------------------------------------------------------
-
-      const {
-        data: existingLead,
-        error: duplicateError,
-      } = await supabase
-        .from(LEADS_TABLE)
-        .select("id, lead_id")
-        .eq("lead_id", leadIdValue)
-        .maybeSingle();
-
-      if (duplicateError) {
-        throw duplicateError;
-      }
-
-      if (existingLead) {
-        throw new Error(
-          `Lead ID "${leadIdValue}" already exists.`
-        );
-      }
-
-      // -------------------------------------------------------
-      // CREATE COMPANY
-      // -------------------------------------------------------
-
-      const companyPayload = {
-        company_id:
-          generateCompanyId(
-            companyNameValue
-          ),
-
-        company_name:
-          companyNameValue,
-
-        account_manager:
-          managerValue,
-
-        status: "ACTIVE",
-      };
-
-      const {
-        data: companyData,
-        error: companyError,
-      } = await supabase
-        .from(COMPANIES_TABLE)
-        .insert([companyPayload])
-        .select("*")
-        .single();
-
-      if (companyError) {
-        throw new Error(
-          `Company creation failed: ${companyError.message}`
-        );
-      }
-
-      newCompany = companyData;
-
-      console.log(
-        "NEW DATABASE - CREATED COMPANY:",
-        newCompany
-      );
-
-      // -------------------------------------------------------
-      // CREATE LEAD
-      // -------------------------------------------------------
-
-      const leadPayload = {
-        company_id:
-          newCompany.id,
-
-        lead_id:
-          leadIdValue,
-
-        lead_source:
-          sourceValue || null,
-
-        company_type:
-          "LEAD",
-
-        status:
-          "ACTIVE",
-      };
-
-      const {
-        data: newLead,
-        error: leadError,
-      } = await supabase
-        .from(LEADS_TABLE)
-        .insert([leadPayload])
-        .select("*")
-        .single();
-
-      if (leadError) {
-        // Rollback company
-        await supabase
-          .from(COMPANIES_TABLE)
-          .delete()
-          .eq(
-            "id",
-            newCompany.id
-          );
-
-        throw new Error(
-          `Lead creation failed: ${leadError.message}`
-        );
-      }
-
-      console.log(
-        "NEW DATABASE - CREATED LEAD:",
-        newLead
-      );
-
-      setSuccess(
-        "Lead created successfully in Supabase."
-      );
-
-      setShowModal(false);
-      resetForm();
-
-      await fetchData();
-    } catch (err) {
-      console.error(
-        "Create lead error:",
-        err
-      );
-
-      setError(
-        err?.message ||
-          "Unable to create lead."
-      );
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // =========================================================
-  // OPEN DETAILS
-  // =========================================================
-
-  const openLeadDetails = (lead) => {
-    if (!lead?.id) return;
-
-    navigate(
-      `/leads/${encodeURIComponent(
-        String(lead.id)
-      )}`
+  const summary = useMemo(() => {
+    const statuses = enrichedLeads.map((lead) =>
+      String(lead.status || "NEW").toUpperCase()
     );
-  };
 
-  // =========================================================
-  // STATUS TEXT STYLE
-  // =========================================================
-
-  const getStatusTextStyle = (status) => {
-    switch (
-      String(status || "").toUpperCase()
-    ) {
-      case "ACTIVE":
-        return "text-green-600";
-
-      case "PENDING":
-        return "text-yellow-600";
-
-      case "CONVERTED":
-        return "text-blue-600";
-
-      case "CLOSED":
-        return "text-red-600";
-
-      case "INACTIVE":
-        return "text-gray-500";
-
-      default:
-        return "text-gray-500";
-    }
-  };
-
-  // =========================================================
-  // TYPE TEXT STYLE
-  // =========================================================
-
-  const getTypeTextStyle = (type) => {
-    switch (
-      String(type || "").toUpperCase()
-    ) {
-      case "CUSTOMER":
-        return "text-green-600";
-
-      case "VENDOR":
-        return "text-purple-600";
-
-      case "LEAD":
-        return "text-blue-600";
-
-      default:
-        return "text-gray-500";
-    }
-  };
-
-  // =========================================================
-  // RENDER
-  // =========================================================
+    return {
+      total: enrichedLeads.length,
+      newLeads: statuses.filter((status) => status === "NEW").length,
+      hotLeads: statuses.filter((status) => status === "HOT").length,
+      activeLeads: statuses.filter(
+        (status) => status === "ACTIVE" || status === "CURRENT"
+      ).length,
+    };
+  }, [enrichedLeads]);
 
   return (
-    <div className="min-h-screen bg-[#f5f6f8]">
-
-      {/* =====================================================
-          TOP HEADER
-      ===================================================== */}
-
-      <header className="h-16 bg-white border-b border-gray-300 flex items-center px-6">
-
-        <button
-          type="button"
-          onClick={() =>
-            navigate("/dashboard")
-          }
-          className="w-9 h-9 flex items-center justify-center border border-gray-300 rounded-md hover:bg-gray-100"
-        >
-          ←
-        </button>
-
-        <div className="ml-4">
-
-          <h1 className="text-base font-semibold text-gray-900">
-            CloudCRM
-          </h1>
-
-          <p className="text-xs text-gray-500">
-            Lead Management
-          </p>
-
-        </div>
-
-      </header>
-
-      {/* =====================================================
-          MAIN
-      ===================================================== */}
-
-      <main className="p-6">
-
-        {/* HEADER */}
-
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-
+    <div className="min-h-screen bg-gray-100 p-6 lg:p-8">
+      <div className="mx-auto max-w-7xl">
+        {/* Page header */}
+        <div className="mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div>
-
             <h1 className="text-2xl font-bold text-gray-900">
               Leads
             </h1>
 
-            <p className="text-sm text-gray-500 mt-1">
-              Manage actual lead records from Supabase.
+            <p className="mt-1 text-sm text-gray-500">
+              Manage, track, and follow up with your business leads.
             </p>
-
           </div>
 
           <button
             type="button"
-            onClick={openAddModal}
-            className="px-5 py-2.5 bg-black text-white text-sm font-semibold rounded-md hover:bg-gray-800"
+            onClick={() => navigate("/leads/add")}
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           >
-            + Add Lead
+            <span className="text-lg leading-none">+</span>
+            Add Lead
           </button>
-
         </div>
 
-        {/* ALERTS */}
-
-        {error && !showModal && (
-          <div className="mb-5 px-4 py-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-md">
-            {error}
-          </div>
-        )}
-
+        {/* Success message */}
         {success && (
-          <div className="mb-5 px-4 py-3 bg-green-50 border border-green-200 text-green-700 text-sm rounded-md">
-            {success}
+          <div className="mb-5 flex items-center justify-between gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+            <span>{success}</span>
+
+            <button
+              type="button"
+              onClick={() =>
+                navigate(location.pathname, {
+                  replace: true,
+                  state: {},
+                })
+              }
+              className="font-medium text-green-800 hover:text-green-950"
+              aria-label="Dismiss success message"
+            >
+              ×
+            </button>
           </div>
         )}
 
-        {/* =================================================
-            SUMMARY
-        ================================================= */}
+        {/* Error message */}
+        {error && (
+          <div className="mb-5 flex items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <span>{error}</span>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-
-          <SummaryCard
-            label="Total Leads"
-            value={totalLeads}
-          />
-
-          <SummaryCard
-            label="Active"
-            value={activeCount}
-          />
-
-          <SummaryCard
-            label="Pending"
-            value={pendingCount}
-          />
-
-          <SummaryCard
-            label="Converted"
-            value={convertedCount}
-          />
-
-        </div>
-
-        {/* =================================================
-            FILTERS
-        ================================================= */}
-
-        <div className="bg-white border border-gray-300 rounded-md mb-4 p-3">
-
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-
-            <input
-              type="text"
-              value={search}
-              onChange={(e) =>
-                setSearch(
-                  e.target.value
-                )
-              }
-              placeholder="Search database..."
-              className="h-10 px-3 border border-gray-300 rounded-md text-sm outline-none focus:border-black"
-            />
-
-            <select
-              value={statusFilter}
-              onChange={(e) =>
-                setStatusFilter(
-                  e.target.value
-                )
-              }
-              className="h-10 px-3 border border-gray-300 rounded-md bg-white text-sm"
+            <button
+              type="button"
+              onClick={fetchLeads}
+              className="shrink-0 font-semibold underline"
             >
-
-              <option value="">
-                All Status
-              </option>
-
-              {statusOptions.map(
-                (status) => (
-                  <option
-                    key={status}
-                    value={status}
-                  >
-                    {status}
-                  </option>
-                )
-              )}
-
-            </select>
-
-            <select
-              value={typeFilter}
-              onChange={(e) =>
-                setTypeFilter(
-                  e.target.value
-                )
-              }
-              className="h-10 px-3 border border-gray-300 rounded-md bg-white text-sm"
-            >
-
-              <option value="">
-                All Types
-              </option>
-
-              {typeOptions.map(
-                (type) => (
-                  <option
-                    key={type}
-                    value={type}
-                  >
-                    {type}
-                  </option>
-                )
-              )}
-
-            </select>
-
-            <select
-              value={sourceFilter}
-              onChange={(e) =>
-                setSourceFilter(
-                  e.target.value
-                )
-              }
-              className="h-10 px-3 border border-gray-300 rounded-md bg-white text-sm"
-            >
-
-              <option value="">
-                All Sources
-              </option>
-
-              {sourceOptions.map(
-                (source) => (
-                  <option
-                    key={source}
-                    value={source}
-                  >
-                    {source}
-                  </option>
-                )
-              )}
-
-            </select>
-
+              Retry
+            </button>
           </div>
+        )}
 
+        {/* Summary cards */}
+        <div className="mb-7 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <SummaryCard
+            title="Total Leads"
+            value={loading ? "—" : summary.total}
+            description="All recorded leads"
+          />
+
+          <SummaryCard
+            title="New Leads"
+            value={loading ? "—" : summary.newLeads}
+            description="Leads marked as new"
+          />
+
+          <SummaryCard
+            title="Hot Leads"
+            value={loading ? "—" : summary.hotLeads}
+            description="Leads requiring attention"
+          />
+
+          <SummaryCard
+            title="Active Leads"
+            value={loading ? "—" : summary.activeLeads}
+            description="Active or current leads"
+          />
         </div>
 
-        {/* =================================================
-            TABLE
-        ================================================= */}
+        {/* Leads table */}
+        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+          <div className="flex flex-col gap-4 border-b border-gray-200 p-5 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">
+                All Leads
+              </h2>
 
-        <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+              <p className="mt-1 text-sm text-gray-500">
+                {loading
+                  ? "Loading leads..."
+                  : `${filteredLeads.length} lead${
+                      filteredLeads.length === 1 ? "" : "s"
+                    } found`}
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <div className="relative">
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search leads..."
+                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm outline-none transition placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 sm:w-64"
+                />
+              </div>
+
+              <select
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value)}
+                className="rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                aria-label="Filter leads by status"
+              >
+                <option value="ALL">All statuses</option>
+                <option value="NEW">New</option>
+                <option value="HOT">Hot</option>
+                <option value="CURRENT">Current</option>
+                <option value="OLD">Old</option>
+                <option value="SPAM">Spam</option>
+                <option value="NOT WORKING">Not Working</option>
+                <option value="ACTIVE">Active</option>
+                <option value="INACTIVE">Inactive</option>
+              </select>
+            </div>
+          </div>
 
           <div className="overflow-x-auto">
-
-            <table className="w-full min-w-[950px]">
-
-              <thead className="bg-gray-50 border-b border-gray-200">
-
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
                 <tr>
-
-                  <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                    Lead ID
-                  </th>
-
-                  <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  <th className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                     Company
                   </th>
 
-                  <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  <th className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                    Lead ID
+                  </th>
+
+                  <th className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                     Account Manager
                   </th>
 
-                  <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                    Type
+                  <th className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                    Lead Source
                   </th>
 
-                  <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                    Source
-                  </th>
-
-                  <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  <th className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                     Status
                   </th>
 
-                  <th className="text-right px-5 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                    Action
+                  <th className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                    Created
                   </th>
 
+                  <th className="px-5 py-3.5 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">
+                    Action
+                  </th>
                 </tr>
-
               </thead>
 
-              <tbody>
-
-                {/* LOADING */}
-
-                {loading && (
+              <tbody className="divide-y divide-gray-100 bg-white">
+                {loading ? (
                   <tr>
-
                     <td
-                      colSpan="7"
-                      className="px-5 py-10 text-center"
+                      colSpan={7}
+                      className="px-5 py-12 text-center text-sm text-gray-500"
                     >
-
-                      <div className="w-7 h-7 border-2 border-gray-300 border-t-black rounded-full animate-spin mx-auto mb-3" />
-
-                      <p className="text-sm text-gray-500">
-                        Loading actual Supabase data...
+                      Loading leads...
+                    </td>
+                  </tr>
+                ) : filteredLeads.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={7}
+                      className="px-5 py-12 text-center"
+                    >
+                      <p className="text-sm font-medium text-gray-700">
+                        No leads found
                       </p>
 
-                    </td>
+                      <p className="mt-1 text-sm text-gray-500">
+                        Try changing your search or add a new lead.
+                      </p>
 
-                  </tr>
-                )}
-
-                {/* EMPTY */}
-
-                {!loading &&
-                  filteredLeads.length === 0 && (
-                    <tr>
-
-                      <td
-                        colSpan="7"
-                        className="px-5 py-10 text-center"
+                      <button
+                        type="button"
+                        onClick={() => navigate("/leads/add")}
+                        className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
                       >
+                        + Add Lead
+                      </button>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredLeads.map((lead) => (
+                    <tr
+                      key={lead.id}
+                      className="transition hover:bg-gray-50"
+                    >
+                      <td className="whitespace-nowrap px-5 py-4">
+                        <div className="font-medium text-gray-900">
+                          {lead.company_name}
+                        </div>
 
-                        <p className="text-sm font-medium text-gray-700">
-                          No leads found
-                        </p>
-
-                        <p className="text-xs text-gray-500 mt-1">
-                          {leads.length === 0
-                            ? "No lead records were returned by Supabase."
-                            : "No records match the selected filters."}
-                        </p>
-
+                        <div className="mt-1 text-xs text-gray-500">
+                          {lead.company_type || "LEAD"}
+                        </div>
                       </td>
 
-                    </tr>
-                  )}
+                      <td className="whitespace-nowrap px-5 py-4 text-sm text-gray-700">
+                        {lead.lead_id || "—"}
+                      </td>
 
-                {/* DATA */}
+                      <td className="whitespace-nowrap px-5 py-4 text-sm text-gray-700">
+                        {lead.account_manager || "—"}
+                      </td>
 
-                {!loading &&
-                  filteredLeads.map(
-                    (lead) => {
+                      <td className="whitespace-nowrap px-5 py-4 text-sm text-gray-700">
+                        {lead.lead_source || "—"}
+                      </td>
 
-                      const company =
-                        companyMap[
-                          String(
-                            lead?.company_id
-                          )
-                        ] || null;
-
-                      const type =
-                        lead?.company_type ||
-                        "—";
-
-                      const status =
-                        lead?.status ||
-                        "—";
-
-                      return (
-                        <tr
-                          key={lead.id}
-                          className="border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition"
+                      <td className="whitespace-nowrap px-5 py-4">
+                        <span
+                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusStyle(
+                            lead.status
+                          )}`}
                         >
+                          {lead.status || "NEW"}
+                        </span>
+                      </td>
 
-                          {/* LEAD ID */}
+                      <td className="whitespace-nowrap px-5 py-4 text-sm text-gray-500">
+                        {formatDate(lead.created_at)}
+                      </td>
 
-                          <td className="px-5 py-3">
+                      
+<td className="px-5 py-4 text-right">
+  <button
+    type="button"
+    onClick={() => navigate(`/leads/${lead.id}`)}
+    className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-5 py-2 text-sm font-medium text-gray-800 transition hover:bg-gray-50"
+  >
+    Open
+    <span aria-hidden="true">→</span>
+  </button>
+</td>
 
-                            <span className="font-medium text-sm text-gray-900">
-                              {lead?.lead_id ||
-                                "—"}
-                            </span>
-
-                            <p className="text-[10px] text-gray-400 mt-0.5">
-                              DB ID:{" "}
-                              {lead?.id}
-                            </p>
-
-                          </td>
-
-                          {/* COMPANY */}
-
-                          <td className="px-5 py-3">
-
-                            <p className="font-semibold text-sm text-gray-900">
-                              {company?.company_name ||
-                                "—"}
-                            </p>
-
-                            <p className="text-xs text-gray-400 mt-0.5">
-                              {company?.company_id ||
-                                "—"}
-                            </p>
-
-                          </td>
-
-                          {/* ACCOUNT MANAGER */}
-
-                          <td className="px-5 py-3">
-
-                            <span className="text-sm text-gray-700">
-                              {company?.account_manager ||
-                                "—"}
-                            </span>
-
-                          </td>
-
-                          {/* TYPE */}
-
-                          <td className="px-5 py-3">
-
-                            <span
-                              className={`text-xs font-semibold ${getTypeTextStyle(
-                                type
-                              )}`}
-                            >
-                              {type}
-                            </span>
-
-                          </td>
-
-                          {/* SOURCE */}
-
-                          <td className="px-5 py-3">
-
-                            <span className="text-sm text-gray-700">
-                              {lead?.lead_source ||
-                                "—"}
-                            </span>
-
-                          </td>
-
-                          {/* STATUS */}
-
-                          <td className="px-5 py-3">
-
-                            <span
-                              className={`text-xs font-semibold ${getStatusTextStyle(
-                                status
-                              )}`}
-                            >
-                              {status}
-                            </span>
-
-                          </td>
-
-                          {/* OPEN */}
-
-                          <td className="px-5 py-3">
-
-                            <div className="flex justify-end">
-
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  openLeadDetails(
-                                    lead
-                                  )
-                                }
-                                className="inline-flex items-center gap-2 px-4 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-100 transition"
-                              >
-                                Open
-                                <span>
-                                  →
-                                </span>
-                              </button>
-
-                            </div>
-
-                          </td>
-
-                        </tr>
-                      );
-                    }
-                  )}
-
+                    </tr>
+                  ))
+                )}
               </tbody>
-
             </table>
-
           </div>
 
-        </div>
-
-      </main>
-
-      {/* =====================================================
-          ADD LEAD MODAL
-      ===================================================== */}
-
-      {showModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-
-          <div className="bg-white w-full max-w-xl rounded-lg shadow-2xl">
-
-            {/* MODAL HEADER */}
-
-            <div className="border-b border-gray-300 px-6 py-4 flex items-center justify-between">
-
-              <div>
-
-                <h2 className="text-lg font-bold text-gray-900">
-                  Add New Lead
-                </h2>
-
-                <p className="text-xs text-gray-500 mt-1">
-                  Creates a company and lead record directly in Supabase.
-                </p>
-
-              </div>
-
-              <button
-                type="button"
-                onClick={closeModal}
-                disabled={saving}
-                className="w-8 h-8 border border-gray-300 rounded-md hover:bg-gray-100"
-              >
-                ×
-              </button>
-
+          {/* Table footer */}
+          {!loading && filteredLeads.length > 0 && (
+            <div className="border-t border-gray-200 bg-white px-5 py-3">
+              <p className="text-xs text-gray-500">
+                Showing {filteredLeads.length} of {leads.length} leads
+              </p>
             </div>
-
-            {/* FORM */}
-
-            <form
-              onSubmit={handleAddLead}
-              className="p-6"
-            >
-
-              {error && (
-                <div className="mb-5 px-4 py-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-md">
-                  {error}
-                </div>
-              )}
-
-              <FormInput
-                label="Company Name"
-                value={companyName}
-                onChange={setCompanyName}
-                placeholder="Enter company name"
-                disabled={saving}
-                required
-              />
-
-              <FormInput
-                label="Lead ID"
-                value={leadId}
-                onChange={setLeadId}
-                placeholder="Example: TGW1001"
-                disabled={saving}
-                required
-              />
-
-              <FormInput
-                label="Account Manager"
-                value={accountManager}
-                onChange={setAccountManager}
-                placeholder="Enter account manager"
-                disabled={saving}
-                required
-              />
-
-              <FormInput
-                label="Lead Source"
-                value={leadSource}
-                onChange={setLeadSource}
-                placeholder="Website, Referral, LinkedIn..."
-                disabled={saving}
-              />
-
-              <div className="border border-blue-200 bg-blue-50 rounded-md p-4 mb-6">
-
-                <p className="text-xs font-semibold text-blue-700">
-                  New records start as LEAD
-                </p>
-
-                <p className="text-xs text-blue-600 mt-1">
-                  The LEAD type is stored in the leads.company_type column.
-                </p>
-
-              </div>
-
-              <div className="flex justify-end gap-3 pt-5 border-t">
-
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  disabled={saving}
-                  className="px-5 py-2.5 border border-gray-300 rounded-md text-sm hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="px-6 py-2.5 bg-black text-white rounded-md text-sm font-semibold disabled:opacity-50"
-                >
-                  {saving
-                    ? "Creating..."
-                    : "Create Lead"}
-                </button>
-
-              </div>
-
-            </form>
-
-          </div>
-
+          )}
         </div>
-      )}
-
+      </div>
     </div>
   );
 }
-
-// =============================================================
-// FORM INPUT
-// =============================================================
-
-function FormInput({
-  label,
-  value,
-  onChange,
-  placeholder,
-  disabled,
-  required = false,
-}) {
-  return (
-    <div className="mb-5">
-
-      <label className="block text-sm font-semibold text-gray-700 mb-2">
-        {label}
-      </label>
-
-      <input
-        type="text"
-        value={value}
-        onChange={(e) =>
-          onChange(e.target.value)
-        }
-        placeholder={placeholder}
-        required={required}
-        disabled={disabled}
-        className="w-full h-11 px-3 border border-gray-300 rounded-md text-sm outline-none focus:border-black"
-      />
-
-    </div>
-  );
-}
-
-// =============================================================
-// SUMMARY CARD
-// =============================================================
-
-function SummaryCard({
-  label,
-  value,
-}) {
-  return (
-    <div className="bg-white border border-gray-300 rounded-md px-5 py-4">
-
-      <p className="text-xs uppercase tracking-wide text-gray-500">
-        {label}
-      </p>
-
-      <p className="text-2xl font-bold text-gray-900 mt-1">
-        {value}
-      </p>
-
-    </div>
-  );
-}
-
-export default Leads;

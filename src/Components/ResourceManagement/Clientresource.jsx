@@ -4,7 +4,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { createPortal } from "react-dom";
 import { supabase } from "../../supabaseClient";
 
@@ -13,20 +13,9 @@ const CUSTOMER_TABLE = "customers";
 const COMPANY_TABLE = "companies";
 const QUALITY_TABLE = "quality_descriptions";
 
-const EMPTY_CLIENT = {
-  customerId: "",
-  sellingRate: "",
-  ports: "",
-  credit: "",
-  routeType: "",
-  supportQuality: "",
-  status: "",
-  qualityDescriptionId: "",
-  manualQualityDescription: "",
-  country: "",
-};
-
 function Clientresource() {
+  const navigate = useNavigate();
+
   const [clients, setClients] = useState([]);
   const [qualityDescriptionsData, setQualityDescriptionsData] =
     useState([]);
@@ -35,16 +24,6 @@ function Clientresource() {
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-
-  /* ============================================================
-     CUSTOMER SEARCH
-  ============================================================ */
-
-  const [customerSearch, setCustomerSearch] = useState("");
-  const [customerSuggestions, setCustomerSuggestions] = useState([]);
-  const [customerLookupLoading, setCustomerLookupLoading] =
-    useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState(null);
 
   /* ============================================================
      FILTERS
@@ -61,7 +40,6 @@ function Clientresource() {
      MODALS
   ============================================================ */
 
-  const [showAddClient, setShowAddClient] = useState(false);
   const [showEditClient, setShowEditClient] = useState(false);
   const [showViewClient, setShowViewClient] = useState(false);
 
@@ -70,15 +48,6 @@ function Clientresource() {
 
   const [openMenu, setOpenMenu] = useState(null);
   const [menuPosition, setMenuPosition] = useState(null);
-
-  const [newClient, setNewClient] = useState(EMPTY_CLIENT);
-
-  /* ============================================================
-     MANUAL QUALITY DESCRIPTION
-  ============================================================ */
-
-  const [useManualQualityDescription, setUseManualQualityDescription] =
-    useState(false);
 
   /* ============================================================
      HELPER - QUALITY DESCRIPTION
@@ -104,68 +73,47 @@ function Clientresource() {
   ============================================================ */
 
   const formatClient = useCallback(
-    (
-      resource,
-      customer = null,
-      company = null,
-      quality = null
-    ) => {
+    (resource, customer = null, company = null, quality = null) => {
       return {
         id: resource.id,
 
-        customerResourceId:
-          resource.customer_id ?? "",
+        customerResourceId: resource.customer_id ?? "",
 
         customerId:
           customer?.customer_id ??
           resource.customer_id ??
           "",
 
-        company:
-          company?.company_name ??
-          "",
+        company: company?.company_name ?? "",
 
-        accountManager:
-          company?.account_manager ??
-          "",
+        accountManager: company?.account_manager ?? "",
 
-        country:
-          company?.country ??
-          resource.country ??
-          "",
+        country: company?.country ?? resource.country ?? "",
 
-        sellingRate:
-          resource.selling_rate ?? "",
+        sellingRate: resource.selling_rate ?? "",
 
-        ports:
-          resource.ports ?? "",
+        // STAR RATING
+        starRating: Number(resource.star_rating ?? 0),
 
-        credit:
-          resource.credit ?? "",
+        ports: resource.ports ?? "",
 
-        supportQuality:
-          resource.support_quality ?? "",
+        credit: resource.credit ?? "",
 
-        qualityDescriptionId:
-          resource.quality_description_id ?? "",
+        supportQuality: resource.support_quality ?? "",
 
-        qualityDescription:
-          getQualityDescription(quality),
+        qualityDescriptionId: resource.quality_description_id ?? "",
 
-        routeType:
-          resource.route_type ?? "",
+        qualityDescription: getQualityDescription(quality),
 
-        billingCycle:
-          resource.billing_cycle ?? "",
+        routeType: resource.route_type ?? "",
 
-        status:
-          resource.status ?? "",
+        billingCycle: resource.billing_cycle ?? "",
 
-        createdAt:
-          resource.created_at ?? "",
+        status: resource.status ?? "",
 
-        updatedAt:
-          resource.updated_at ?? "",
+        createdAt: resource.created_at ?? "",
+
+        updatedAt: resource.updated_at ?? "",
       };
     },
     [getQualityDescription]
@@ -266,9 +214,7 @@ function Clientresource() {
           error: customerError,
         } = await supabase
           .from(CUSTOMER_TABLE)
-          .select(
-            "id, customer_id, company_id, status"
-          )
+          .select("id, customer_id, company_id, status")
           .in("id", customerIds);
 
         if (customerError) {
@@ -324,28 +270,19 @@ function Clientresource() {
       const customerMap = new Map();
 
       customers.forEach((customer) => {
-        customerMap.set(
-          String(customer.id),
-          customer
-        );
+        customerMap.set(String(customer.id), customer);
       });
 
       const companyMap = new Map();
 
       companies.forEach((company) => {
-        companyMap.set(
-          String(company.id),
-          company
-        );
+        companyMap.set(String(company.id), company);
       });
 
       const qualityMap = new Map();
 
       qualities.forEach((quality) => {
-        qualityMap.set(
-          String(quality.id),
-          quality
-        );
+        qualityMap.set(String(quality.id), quality);
       });
 
       /*
@@ -353,57 +290,42 @@ function Clientresource() {
        * Combine everything.
        */
 
-      const formattedClients = resources.map(
-        (resource) => {
-          const customer =
-            customerMap.get(
-              String(resource.customer_id)
-            );
+      const formattedClients = resources.map((resource) => {
+        const customer = customerMap.get(
+          String(resource.customer_id)
+        );
 
-          const company = customer
-            ? companyMap.get(
-                String(customer.company_id)
-              )
-            : null;
+        const company = customer
+          ? companyMap.get(String(customer.company_id))
+          : null;
 
-          const quality =
-            resource.quality_description_id
-              ? qualityMap.get(
-                  String(
-                    resource.quality_description_id
-                  )
-                )
-              : null;
+        const quality = resource.quality_description_id
+          ? qualityMap.get(
+              String(resource.quality_description_id)
+            )
+          : null;
 
-          return formatClient(
-            resource,
-            customer,
-            company,
-            quality
-          );
-        }
-      );
+        return formatClient(
+          resource,
+          customer,
+          company,
+          quality
+        );
+      });
 
       setClients(formattedClients);
     } catch (err) {
-      console.error(
-        "Error fetching client resources:",
-        err
-      );
+      console.error("Error fetching client resources:", err);
 
       setClients([]);
 
       setError(
-        err?.message ||
-          "Unable to load client resources."
+        err?.message || "Unable to load client resources."
       );
     } finally {
       setLoading(false);
     }
-  }, [
-    fetchQualityDescriptions,
-    formatClient,
-  ]);
+  }, [fetchQualityDescriptions, formatClient]);
 
   /* ============================================================
      INITIAL FETCH
@@ -415,11 +337,10 @@ function Clientresource() {
 
   /* ============================================================
      FETCH COMPANY BY ID
+     USED BY EDIT CLIENT
   ============================================================ */
 
-  const fetchCompanyById = async (
-    companyId
-  ) => {
+  const fetchCompanyById = async (companyId) => {
     if (
       companyId === null ||
       companyId === undefined ||
@@ -447,322 +368,6 @@ function Clientresource() {
   };
 
   /* ============================================================
-     FETCH CUSTOMER BY ID
-  ============================================================ */
-
-  const fetchCustomerById = async (
-    rawValue
-  ) => {
-    const value = String(
-      rawValue || ""
-    ).trim();
-
-    if (!value) {
-      setSelectedCustomer(null);
-      setCustomerSuggestions([]);
-
-      setNewClient((previous) => ({
-        ...previous,
-        customerId: "",
-      }));
-
-      return null;
-    }
-
-    setCustomerLookupLoading(true);
-    setError("");
-
-    try {
-      const {
-        data: customer,
-        error: customerError,
-      } = await supabase
-        .from(CUSTOMER_TABLE)
-        .select(
-          "id, customer_id, company_id, status"
-        )
-        .eq("customer_id", value)
-        .maybeSingle();
-
-      if (customerError) {
-        throw customerError;
-      }
-
-      if (!customer) {
-        setSelectedCustomer(null);
-        setCustomerSuggestions([]);
-
-        setNewClient((previous) => ({
-          ...previous,
-          customerId: value,
-        }));
-
-        setError(
-          `Customer ID "${value}" was not found in the new customers table.`
-        );
-
-        return null;
-      }
-
-      const company =
-        await fetchCompanyById(
-          customer.company_id
-        );
-
-      const customerWithCompany = {
-        ...customer,
-        company,
-      };
-
-      setSelectedCustomer(
-        customerWithCompany
-      );
-
-      setCustomerSuggestions([]);
-
-      setCustomerSearch(
-        customer.customer_id ||
-          value
-      );
-
-      setNewClient((previous) => ({
-        ...previous,
-        customerId:
-          customer.customer_id ||
-          value,
-        country:
-          company?.country ||
-          "",
-      }));
-
-      return customerWithCompany;
-    } catch (err) {
-      console.error(
-        "Exact customer lookup error:",
-        err
-      );
-
-      setSelectedCustomer(null);
-      setCustomerSuggestions([]);
-
-      setError(
-        err?.message ||
-          "Unable to fetch customer information."
-      );
-
-      return null;
-    } finally {
-      setCustomerLookupLoading(false);
-    }
-  };
-
-  /* ============================================================
-     CUSTOMER SEARCH
-  ============================================================ */
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const searchCustomers = async () => {
-      const value =
-        customerSearch.trim();
-
-      if (
-        !value ||
-        selectedCustomer
-      ) {
-        setCustomerSuggestions([]);
-        return;
-      }
-
-      setCustomerLookupLoading(true);
-
-      try {
-        const {
-          data,
-          error: lookupError,
-        } = await supabase
-          .from(CUSTOMER_TABLE)
-          .select(
-            "id, customer_id, company_id, status"
-          )
-          .ilike(
-            "customer_id",
-            `%${value}%`
-          )
-          .limit(10);
-
-        if (lookupError) {
-          throw lookupError;
-        }
-
-        if (!cancelled) {
-          setCustomerSuggestions(
-            data || []
-          );
-        }
-      } catch (err) {
-        console.error(
-          "Customer search error:",
-          err
-        );
-
-        if (!cancelled) {
-          setCustomerSuggestions(
-            []
-          );
-
-          setError(
-            err?.message ||
-              "Unable to search Customer ID."
-          );
-        }
-      } finally {
-        if (!cancelled) {
-          setCustomerLookupLoading(
-            false
-          );
-        }
-      }
-    };
-
-    const timeout = setTimeout(
-      searchCustomers,
-      300
-    );
-
-    return () => {
-      cancelled = true;
-      clearTimeout(timeout);
-    };
-  }, [
-    customerSearch,
-    selectedCustomer,
-  ]);
-
-  /* ============================================================
-     SELECT CUSTOMER
-  ============================================================ */
-
-  const handleSelectCustomer =
-    async (customer) => {
-      try {
-        setError("");
-        setCustomerLookupLoading(true);
-
-        const company =
-          await fetchCompanyById(
-            customer.company_id
-          );
-
-        const customerWithCompany = {
-          ...customer,
-          company,
-        };
-
-        setSelectedCustomer(
-          customerWithCompany
-        );
-
-        setCustomerSearch(
-          customer.customer_id ||
-            ""
-        );
-
-        setCustomerSuggestions([]);
-
-        setNewClient((previous) => ({
-          ...previous,
-          customerId:
-            customer.customer_id ||
-            "",
-          country:
-            company?.country ||
-            "",
-        }));
-      } catch (err) {
-        console.error(
-          "Error loading selected customer:",
-          err
-        );
-
-        setError(
-          err?.message ||
-            "Unable to load selected customer."
-        );
-      } finally {
-        setCustomerLookupLoading(
-          false
-        );
-      }
-    };
-
-  /* ============================================================
-     CUSTOMER SEARCH CHANGE
-  ============================================================ */
-
-  const handleCustomerSearchChange =
-    (event) => {
-      const value =
-        event.target.value;
-
-      setCustomerSearch(value);
-      setSelectedCustomer(null);
-      setCustomerSuggestions([]);
-      setError("");
-
-      setNewClient((previous) => ({
-        ...previous,
-        customerId: value,
-        country: "",
-      }));
-    };
-
-  /* ============================================================
-     OPEN ADD CLIENT
-  ============================================================ */
-
-  const handleOpenAddClient = () => {
-    setError("");
-    setSuccess("");
-
-    setCustomerSearch("");
-    setCustomerSuggestions([]);
-    setSelectedCustomer(null);
-
-    setUseManualQualityDescription(
-      false
-    );
-
-    setNewClient(
-      EMPTY_CLIENT
-    );
-
-    setShowAddClient(true);
-  };
-
-  /* ============================================================
-     CLOSE ADD CLIENT
-  ============================================================ */
-
-  const handleCloseAddClient =
-    () => {
-      setShowAddClient(false);
-
-      setCustomerSearch("");
-      setCustomerSuggestions([]);
-      setSelectedCustomer(null);
-
-      setUseManualQualityDescription(
-        false
-      );
-
-      setNewClient(
-        EMPTY_CLIENT
-      );
-    };
-
-  /* ============================================================
      FILTER OPTIONS
   ============================================================ */
 
@@ -771,9 +376,7 @@ function Clientresource() {
       ...new Set(
         clients
           .map((client) =>
-            String(
-              client.country || ""
-            ).trim()
+            String(client.country || "").trim()
           )
           .filter(Boolean)
       ),
@@ -785,112 +388,85 @@ function Clientresource() {
       ...new Set(
         clients
           .map((client) =>
-            String(
-              client.accountManager ||
-                ""
-            ).trim()
+            String(client.accountManager || "").trim()
           )
           .filter(Boolean)
       ),
     ].sort();
   }, [clients]);
 
-  const qualityDescriptions =
-    useMemo(() => {
-      return [
-        ...new Set(
-          clients
-            .map((client) =>
-              String(
-                client.qualityDescription ||
-                  ""
-              ).trim()
-            )
-            .filter(Boolean)
-        ),
-      ].sort();
-    }, [clients]);
+  const qualityDescriptions = useMemo(() => {
+    return [
+      ...new Set(
+        clients
+          .map((client) =>
+            String(client.qualityDescription || "").trim()
+          )
+          .filter(Boolean)
+      ),
+    ].sort();
+  }, [clients]);
 
   /* ============================================================
      FILTER CLIENTS
   ============================================================ */
 
-  const filteredClients =
-    useMemo(() => {
-      const searchValue =
-        search.toLowerCase().trim();
+  const filteredClients = useMemo(() => {
+    const searchValue = search.toLowerCase().trim();
 
-      return clients.filter(
-        (client) => {
-          const matchesSearch =
-            !searchValue ||
-            String(
-              client.customerId || ""
-            )
-              .toLowerCase()
-              .includes(searchValue) ||
-            String(
-              client.company || ""
-            )
-              .toLowerCase()
-              .includes(searchValue) ||
-            String(
-              client.accountManager ||
-                ""
-            )
-              .toLowerCase()
-              .includes(searchValue) ||
-            String(
-              client.country || ""
-            )
-              .toLowerCase()
-              .includes(searchValue);
+    return clients.filter((client) => {
+      const matchesSearch =
+        !searchValue ||
+        String(client.customerId || "")
+          .toLowerCase()
+          .includes(searchValue) ||
+        String(client.company || "")
+          .toLowerCase()
+          .includes(searchValue) ||
+        String(client.accountManager || "")
+          .toLowerCase()
+          .includes(searchValue) ||
+        String(client.country || "")
+          .toLowerCase()
+          .includes(searchValue);
 
-          const matchesCountry =
-            countryFilter === "All" ||
-            client.country ===
-              countryFilter;
+      const matchesCountry =
+        countryFilter === "All" ||
+        client.country === countryFilter;
 
-          const matchesManager =
-            managerFilter === "All" ||
-            client.accountManager ===
-              managerFilter;
+      const matchesManager =
+        managerFilter === "All" ||
+        client.accountManager === managerFilter;
 
-          const matchesQuality =
-            qualityDescriptionFilter ===
-              "All" ||
-            client.qualityDescription ===
-              qualityDescriptionFilter;
+      const matchesQuality =
+        qualityDescriptionFilter === "All" ||
+        client.qualityDescription ===
+          qualityDescriptionFilter;
 
-          const normalizedStatus =
-            String(
-              client.status || ""
-            )
-              .trim()
-              .toLowerCase();
+      const normalizedStatus = String(client.status || "")
+        .trim()
+        .toLowerCase();
 
-          const matchesStatus =
-            statusFilter === "All" ||
-            normalizedStatus ===
-              statusFilter.toLowerCase();
+      const matchesStatus =
+        statusFilter === "All" ||
+        normalizedStatus === statusFilter.toLowerCase();
 
-          return (
-            matchesSearch &&
-            matchesCountry &&
-            matchesManager &&
-            matchesQuality &&
-            matchesStatus
-          );
-        }
+      return (
+        matchesSearch &&
+        matchesCountry &&
+        matchesManager &&
+        matchesQuality &&
+        matchesStatus
       );
-    }, [
-      clients,
-      search,
-      countryFilter,
-      managerFilter,
-      qualityDescriptionFilter,
-      statusFilter,
-    ]);
+    });
+  }, [
+    clients,
+    search,
+    countryFilter,
+    managerFilter,
+    qualityDescriptionFilter,
+    statusFilter,
+  ]);
 
   /* ============================================================
      SUMMARY
@@ -898,67 +474,44 @@ function Clientresource() {
 
   const totalClients = new Set(
     filteredClients
-      .map(
-        (client) =>
-          client.customerId
-      )
+      .map((client) => client.customerId)
       .filter(Boolean)
   ).size;
 
-  const totalCapacity =
-    filteredClients.reduce(
-      (total, client) =>
-        total +
-        Number(
-          client.ports || 0
-        ),
-      0
-    );
+  const totalCapacity = filteredClients.reduce(
+    (total, client) =>
+      total + Number(client.ports || 0),
+    0
+  );
 
   const avgSellingRate =
     filteredClients.length > 0
       ? (
           filteredClients.reduce(
             (total, client) =>
-              total +
-              Number(
-                client.sellingRate ||
-                  0
-              ),
+              total + Number(client.sellingRate || 0),
             0
-          ) /
-          filteredClients.length
+          ) / filteredClients.length
         ).toFixed(6)
       : "0.000000";
 
-  const healthWarnings =
-    filteredClients.filter(
-      (client) => {
-        const support =
-          String(
-            client.supportQuality ||
-              ""
-          ).toLowerCase();
+  const healthWarnings = filteredClients.filter((client) => {
+    const support = String(
+      client.supportQuality || ""
+    ).toLowerCase();
 
-        const status =
-          String(
-            client.status || ""
-          ).toLowerCase();
+    const status = String(
+      client.status || ""
+    ).toLowerCase();
 
-        return (
-          support === "poor" ||
-          status === "inactive"
-        );
-      }
-    ).length;
+    return support === "poor" || status === "inactive";
+  }).length;
 
   /* ============================================================
      FORMAT CREDIT
   ============================================================ */
 
-  const formatCredit = (
-    credit
-  ) => {
+  const formatCredit = (credit) => {
     if (
       credit === null ||
       credit === undefined ||
@@ -971,695 +524,294 @@ function Clientresource() {
   };
 
   /* ============================================================
-     ADD CLIENT
+     STAR RATING DISPLAY
   ============================================================ */
 
-  const handleAddClient =
-    async (event) => {
-      event.preventDefault();
+  const renderStars = (rating) => {
+    const value = Math.max(
+      0,
+      Math.min(5, Number(rating) || 0)
+    );
 
-      setError("");
-      setSuccess("");
+    return (
+      <span className="inline-flex items-center whitespace-nowrap">
+        <span className="text-amber-500">
+          {"★".repeat(value)}
+        </span>
 
-      let customer =
-        selectedCustomer;
+        <span className="text-gray-300">
+          {"★".repeat(5 - value)}
+        </span>
 
-      if (
-        !customer ||
-        String(
-          customer.customer_id ||
-            ""
-        ).trim() !==
-          customerSearch.trim()
-      ) {
-        customer =
-          await fetchCustomerById(
-            customerSearch
-          );
-      }
+        <span className="ml-1 text-xs text-gray-500">
+          {value}/5
+        </span>
+      </span>
+    );
+  };
 
-      if (!customer) {
-        return;
-      }
+  /* ============================================================
+     EDIT CLIENT
+  ============================================================ */
 
-      const customerDatabaseId =
-        Number(customer.id);
+  const handleEditClient = (client) => {
+    setEditingClient({
+      ...client,
 
-      if (
-        !customerDatabaseId ||
-        Number.isNaN(
-          customerDatabaseId
-        )
-      ) {
-        setError(
-          "The selected customer does not have a valid database ID."
-        );
+      sellingRate:
+        client.sellingRate === null ||
+        client.sellingRate === undefined
+          ? ""
+          : String(client.sellingRate),
 
-        return;
-      }
+      starRating: Number(client.starRating || 0),
 
-      const sellingRate =
-        newClient.sellingRate ===
-        ""
-          ? null
-          : Number(
-              newClient.sellingRate
-            );
+      ports:
+        client.ports === null ||
+        client.ports === undefined
+          ? ""
+          : String(client.ports),
 
-      const ports =
-        newClient.ports === ""
-          ? null
-          : Number(
-              newClient.ports
-            );
+      credit:
+        client.credit === null ||
+        client.credit === undefined
+          ? ""
+          : String(client.credit),
 
-      const credit =
-        newClient.credit === ""
-          ? null
-          : Number(
-              newClient.credit
-            );
+      routeType: client.routeType || "",
 
-      let qualityDescriptionId =
-        newClient.qualityDescriptionId ===
-        ""
-          ? null
-          : Number(
-              newClient.qualityDescriptionId
-            );
+      supportQuality: client.supportQuality || "",
 
-      if (
-        sellingRate !== null &&
-        Number.isNaN(
-          sellingRate
-        )
-      ) {
-        setError(
-          "Selling rate must be a valid number."
-        );
+      status: client.status || "",
 
-        return;
-      }
+      qualityDescriptionId: client.qualityDescriptionId
+        ? String(client.qualityDescriptionId)
+        : "",
 
-      if (
-        ports !== null &&
-        Number.isNaN(ports)
-      ) {
-        setError(
-          "Ports must be a valid number."
-        );
+      country: client.country || "",
+    });
 
-        return;
-      }
+    setOpenMenu(null);
+    setMenuPosition(null);
 
-      if (
-        credit !== null &&
-        Number.isNaN(credit)
-      ) {
-        setError(
-          "Credit must be a valid number."
-        );
+    setShowEditClient(true);
+    setError("");
+    setSuccess("");
+  };
 
-        return;
-      }
+  /* ============================================================
+     SAVE EDIT
+  ============================================================ */
 
-      if (
-        qualityDescriptionId !==
-          null &&
-        Number.isNaN(
-          qualityDescriptionId
-        )
-      ) {
-        setError(
-          "Quality Description is invalid."
-        );
+  const handleSaveEdit = async (event) => {
+    event.preventDefault();
 
-        return;
-      }
+    if (!editingClient) return;
 
-      try {
-        /*
-         * ========================================================
-         * MANUAL QUALITY DESCRIPTION
-         * ========================================================
-         */
+    setError("");
+    setSuccess("");
 
-        if (
-          useManualQualityDescription &&
-          newClient.manualQualityDescription &&
-          newClient.manualQualityDescription.trim()
-        ) {
-          const manualDescription =
-            newClient.manualQualityDescription.trim();
+    const sellingRate =
+      editingClient.sellingRate === ""
+        ? null
+        : Number(editingClient.sellingRate);
 
-          const {
-            data: newQuality,
-            error:
-              qualityInsertError,
-          } = await supabase
-            .from(QUALITY_TABLE)
-            .insert([
-              {
-                description:
-                  manualDescription,
-              },
-            ])
-            .select("*")
-            .single();
+    const starRating = Math.max(
+      0,
+      Math.min(5, Number(editingClient.starRating) || 0)
+    );
 
-          if (qualityInsertError) {
-            throw qualityInsertError;
-          }
+    const ports =
+      editingClient.ports === ""
+        ? null
+        : Number(editingClient.ports);
 
-          qualityDescriptionId =
-            newQuality.id;
+    const credit =
+      editingClient.credit === ""
+        ? null
+        : Number(editingClient.credit);
 
-          setQualityDescriptionsData(
-            (previous) => [
-              ...previous,
-              newQuality,
-            ]
-          );
-        }
+    const qualityDescriptionId =
+      editingClient.qualityDescriptionId === ""
+        ? null
+        : Number(editingClient.qualityDescriptionId);
 
-        /*
-         * ========================================================
-         * COUNTRY
-         * ========================================================
-         */
+    if (
+      sellingRate !== null &&
+      Number.isNaN(sellingRate)
+    ) {
+      setError("Selling rate must be a valid number.");
+      return;
+    }
 
-        const enteredCountry =
-          String(
-            newClient.country ||
-              customer.company
-                ?.country ||
-              ""
-          ).trim();
+    if (ports !== null && Number.isNaN(ports)) {
+      setError("Ports must be a valid number.");
+      return;
+    }
 
-        if (
-          enteredCountry &&
-          customer.company_id
-        ) {
-          const {
-            error:
-              countryUpdateError,
-          } = await supabase
-            .from(COMPANY_TABLE)
-            .update({
-              country:
-                enteredCountry,
-            })
-            .eq(
-              "id",
-              customer.company_id
-            );
+    if (credit !== null && Number.isNaN(credit)) {
+      setError("Credit must be a valid number.");
+      return;
+    }
 
-          if (countryUpdateError) {
-            throw countryUpdateError;
-          }
-        }
-
-        /*
-         * ========================================================
-         * CLIENT RESOURCE PAYLOAD
-         * ========================================================
-         */
-
-        const payload = {
+    try {
+      const {
+        data,
+        error: updateError,
+      } = await supabase
+        .from(CLIENT_RESOURCE_TABLE)
+        .update({
           customer_id:
-            customerDatabaseId,
+            editingClient.customerResourceId,
 
-          selling_rate:
-            sellingRate,
+          selling_rate: sellingRate,
+
+          // SAVE STAR RATING
+          star_rating: starRating,
 
           ports,
 
           credit,
 
           support_quality:
-            newClient.supportQuality ||
-            null,
+            editingClient.supportQuality || null,
 
           quality_description_id:
             qualityDescriptionId,
 
           route_type:
-            null,
+            editingClient.routeType || null,
 
           status:
-            newClient.status ||
-            null,
-        };
+            editingClient.status || null,
 
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", editingClient.id)
+        .select("*")
+        .single();
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      let customer = null;
+      let company = null;
+
+      if (editingClient.customerResourceId) {
         const {
-          data,
-          error:
-            insertError,
+          data: customerData,
+          error: customerError,
         } = await supabase
-          .from(
-            CLIENT_RESOURCE_TABLE
-          )
-          .insert([payload])
-          .select("*")
-          .single();
+          .from(CUSTOMER_TABLE)
+          .select("id, customer_id, company_id, status")
+          .eq("id", editingClient.customerResourceId)
+          .maybeSingle();
 
-        if (insertError) {
-          throw insertError;
+        if (customerError) {
+          throw customerError;
         }
 
-        /*
-         * Fetch updated company so the new
-         * country is immediately displayed.
-         */
+        customer = customerData;
 
-        let company =
-          customer.company ||
-          null;
-
-        if (
-          customer.company_id
-        ) {
-          company =
-            await fetchCompanyById(
-              customer.company_id
-            );
-        }
-
-        const quality =
-          qualityDescriptionsData.find(
-            (item) =>
-              String(item.id) ===
-              String(
-                qualityDescriptionId
-              )
-          ) || null;
-
-        /*
-         * If manually inserted quality was
-         * created above, use it from the
-         * latest quality list.
-         */
-
-        const manualQuality =
-          useManualQualityDescription &&
-          qualityDescriptionId
-            ? (
-                await supabase
-                  .from(
-                    QUALITY_TABLE
-                  )
-                  .select("*")
-                  .eq(
-                    "id",
-                    qualityDescriptionId
-                  )
-                  .maybeSingle()
-              ).data
-            : null;
-
-        const formatted =
-          formatClient(
-            data,
-            customer,
-            company,
-            manualQuality ||
-              quality
+        if (customer) {
+          company = await fetchCompanyById(
+            customer.company_id
           );
 
-        setClients(
-          (previous) => [
-            ...previous,
-            formatted,
-          ]
-        );
+          /*
+           * Update country if changed in edit modal.
+           */
 
-        setSuccess(
-          "Client resource added successfully."
-        );
+          if (
+            editingClient.country !== undefined &&
+            customer.company_id
+          ) {
+            const enteredCountry = String(
+              editingClient.country || ""
+            ).trim();
 
-        handleCloseAddClient();
-      } catch (err) {
-        console.error(
-          "Error adding client resource:",
-          err
-        );
+            if (enteredCountry) {
+              const {
+                error: countryError,
+              } = await supabase
+                .from(COMPANY_TABLE)
+                .update({
+                  country: enteredCountry,
+                })
+                .eq("id", customer.company_id);
 
-        setError(
-          err?.message ||
-            "Unable to add client resource."
-        );
-      }
-    };
-
-  /* ============================================================
-     EDIT CLIENT
-  ============================================================ */
-
-  const handleEditClient =
-    (client) => {
-      setEditingClient({
-        ...client,
-
-        sellingRate:
-          client.sellingRate ===
-            null ||
-          client.sellingRate ===
-            undefined
-            ? ""
-            : String(
-                client.sellingRate
-              ),
-
-        ports:
-          client.ports === null ||
-          client.ports === undefined
-            ? ""
-            : String(
-                client.ports
-              ),
-
-        credit:
-          client.credit === null ||
-          client.credit === undefined
-            ? ""
-            : String(
-                client.credit
-              ),
-
-        routeType:
-          client.routeType || "",
-
-        supportQuality:
-          client.supportQuality ||
-          "",
-
-        status:
-          client.status || "",
-
-        qualityDescriptionId:
-          client.qualityDescriptionId
-            ? String(
-                client.qualityDescriptionId
-              )
-            : "",
-
-        country:
-          client.country || "",
-      });
-
-      setOpenMenu(null);
-      setMenuPosition(null);
-
-      setShowEditClient(true);
-      setError("");
-      setSuccess("");
-    };
-
-  /* ============================================================
-     SAVE EDIT
-  ============================================================ */
-
-  const handleSaveEdit =
-    async (event) => {
-      event.preventDefault();
-
-      if (!editingClient)
-        return;
-
-      setError("");
-      setSuccess("");
-
-      const sellingRate =
-        editingClient.sellingRate ===
-        ""
-          ? null
-          : Number(
-              editingClient.sellingRate
-            );
-
-      const ports =
-        editingClient.ports === ""
-          ? null
-          : Number(
-              editingClient.ports
-            );
-
-      const credit =
-        editingClient.credit ===
-        ""
-          ? null
-          : Number(
-              editingClient.credit
-            );
-
-      const qualityDescriptionId =
-        editingClient.qualityDescriptionId ===
-        ""
-          ? null
-          : Number(
-              editingClient.qualityDescriptionId
-            );
-
-      if (
-        sellingRate !== null &&
-        Number.isNaN(
-          sellingRate
-        )
-      ) {
-        setError(
-          "Selling rate must be a valid number."
-        );
-
-        return;
-      }
-
-      if (
-        ports !== null &&
-        Number.isNaN(ports)
-      ) {
-        setError(
-          "Ports must be a valid number."
-        );
-
-        return;
-      }
-
-      if (
-        credit !== null &&
-        Number.isNaN(credit)
-      ) {
-        setError(
-          "Credit must be a valid number."
-        );
-
-        return;
-      }
-
-      try {
-        const {
-          data,
-          error:
-            updateError,
-        } = await supabase
-          .from(
-            CLIENT_RESOURCE_TABLE
-          )
-          .update({
-            customer_id:
-              editingClient.customerResourceId,
-
-            selling_rate:
-              sellingRate,
-
-            ports,
-
-            credit,
-
-            support_quality:
-              editingClient.supportQuality ||
-              null,
-
-            quality_description_id:
-              qualityDescriptionId,
-
-            route_type:
-              editingClient.routeType ||
-              null,
-
-            status:
-              editingClient.status ||
-              null,
-
-            updated_at:
-              new Date().toISOString(),
-          })
-          .eq(
-            "id",
-            editingClient.id
-          )
-          .select("*")
-          .single();
-
-        if (updateError) {
-          throw updateError;
-        }
-
-        let customer = null;
-        let company = null;
-
-        if (
-          editingClient.customerResourceId
-        ) {
-          const {
-            data:
-              customerData,
-            error:
-              customerError,
-          } = await supabase
-            .from(
-              CUSTOMER_TABLE
-            )
-            .select(
-              "id, customer_id, company_id, status"
-            )
-            .eq(
-              "id",
-              editingClient.customerResourceId
-            )
-            .maybeSingle();
-
-          if (customerError) {
-            throw customerError;
-          }
-
-          customer =
-            customerData;
-
-          if (customer) {
-            company =
-              await fetchCompanyById(
-                customer.company_id
-              );
-
-            /*
-             * Update country if changed
-             * in edit modal.
-             */
-
-            if (
-              editingClient.country !==
-                undefined &&
-              customer.company_id
-            ) {
-              const enteredCountry =
-                String(
-                  editingClient.country ||
-                    ""
-                ).trim();
-
-              if (
-                enteredCountry
-              ) {
-                const {
-                  error:
-                    countryError,
-                } = await supabase
-                  .from(
-                    COMPANY_TABLE
-                  )
-                  .update({
-                    country:
-                      enteredCountry,
-                  })
-                  .eq(
-                    "id",
-                    customer.company_id
-                  );
-
-                if (
-                  countryError
-                ) {
-                  throw countryError;
-                }
-
-                company = {
-                  ...company,
-                  country:
-                    enteredCountry,
-                };
+              if (countryError) {
+                throw countryError;
               }
+
+              company = {
+                ...company,
+                country: enteredCountry,
+              };
             }
           }
         }
-
-        const quality =
-          qualityDescriptionsData.find(
-            (item) =>
-              String(item.id) ===
-              String(
-                qualityDescriptionId
-              )
-          ) || null;
-
-        const formatted =
-          formatClient(
-            data,
-            customer,
-            company,
-            quality
-          );
-
-        setClients(
-          (previous) =>
-            previous.map(
-              (client) =>
-                client.id ===
-                formatted.id
-                  ? formatted
-                  : client
-            )
-        );
-
-        setShowEditClient(false);
-        setEditingClient(null);
-
-        setSuccess(
-          "Client resource updated successfully."
-        );
-      } catch (err) {
-        console.error(
-          "Error updating client resource:",
-          err
-        );
-
-        setError(
-          err?.message ||
-            "Unable to update client resource."
-        );
       }
-    };
+
+      const quality =
+        qualityDescriptionsData.find(
+          (item) =>
+            String(item.id) ===
+            String(qualityDescriptionId)
+        ) || null;
+
+      const formatted = formatClient(
+        data,
+        customer,
+        company,
+        quality
+      );
+
+      setClients((previous) =>
+        previous.map((client) =>
+          client.id === formatted.id
+            ? formatted
+            : client
+        )
+      );
+
+      setShowEditClient(false);
+      setEditingClient(null);
+
+      setSuccess(
+        "Client resource updated successfully."
+      );
+    } catch (err) {
+      console.error(
+        "Error updating client resource:",
+        err
+      );
+
+      setError(
+        err?.message ||
+          "Unable to update client resource."
+      );
+    }
+  };
 
   /* ============================================================
      VIEW CLIENT
   ============================================================ */
 
-  const handleViewClient =
-    (client) => {
-      setViewingClient(client);
-      setOpenMenu(null);
-      setMenuPosition(null);
-      setShowViewClient(true);
-    };
+  const handleViewClient = (client) => {
+    setViewingClient(client);
+    setOpenMenu(null);
+    setMenuPosition(null);
+    setShowViewClient(true);
+  };
 
   /* ============================================================
      THREE DOT MENU
      FIXED POSITION - WILL NOT GO UNDER TABLE
   ============================================================ */
 
-  const handleOpenMenu = (
-    event,
-    clientId
-  ) => {
+  const handleOpenMenu = (event, clientId) => {
     event.stopPropagation();
 
     const buttonRect =
@@ -1668,35 +820,19 @@ function Clientresource() {
     const menuWidth = 128;
     const menuHeight = 84;
 
-    let left =
-      buttonRect.right -
-      menuWidth;
+    let left = buttonRect.right - menuWidth;
+    let top = buttonRect.bottom + 6;
 
-    let top =
-      buttonRect.bottom + 6;
-
-    if (
-      left + menuWidth >
-      window.innerWidth - 10
-    ) {
-      left =
-        window.innerWidth -
-        menuWidth -
-        10;
+    if (left + menuWidth > window.innerWidth - 10) {
+      left = window.innerWidth - menuWidth - 10;
     }
 
     if (left < 10) {
       left = 10;
     }
 
-    if (
-      top + menuHeight >
-      window.innerHeight - 10
-    ) {
-      top =
-        buttonRect.top -
-        menuHeight -
-        6;
+    if (top + menuHeight > window.innerHeight - 10) {
+      top = buttonRect.top - menuHeight - 6;
     }
 
     if (top < 10) {
@@ -1708,11 +844,8 @@ function Clientresource() {
       left,
     });
 
-    setOpenMenu(
-      (previous) =>
-        previous === clientId
-          ? null
-          : clientId
+    setOpenMenu((previous) =>
+      previous === clientId ? null : clientId
     );
   };
 
@@ -1720,97 +853,75 @@ function Clientresource() {
      PAGE CLICK
   ============================================================ */
 
-  const handlePageClick =
-    () => {
-      if (
-        openMenu !== null
-      ) {
-        setOpenMenu(null);
-        setMenuPosition(null);
-      }
-    };
+  const handlePageClick = () => {
+    if (openMenu !== null) {
+      setOpenMenu(null);
+      setMenuPosition(null);
+    }
+  };
 
   /* ============================================================
      MENU COMPONENT
   ============================================================ */
 
-  const renderActionMenu =
-    () => {
-      if (
-        openMenu === null ||
-        !menuPosition
-      ) {
-        return null;
-      }
+  const renderActionMenu = () => {
+    if (openMenu === null || !menuPosition) {
+      return null;
+    }
 
-      const client =
-        clients.find(
-          (item) =>
-            item.id === openMenu
-        );
+    const client = clients.find(
+      (item) => item.id === openMenu
+    );
 
-      if (!client)
-        return null;
+    if (!client) return null;
 
-      return createPortal(
-        <div
-          className="fixed z-[9999] w-32 bg-white border border-gray-200 rounded-md shadow-lg py-1"
-          style={{
-            top: `${menuPosition.top}px`,
-            left: `${menuPosition.left}px`,
-          }}
-          onClick={(event) =>
-            event.stopPropagation()
-          }
+    return createPortal(
+      <div
+        className="fixed z-[9999] w-32 bg-white border border-gray-200 rounded-md shadow-lg py-1"
+        style={{
+          top: `${menuPosition.top}px`,
+          left: `${menuPosition.left}px`,
+        }}
+        onClick={(event) =>
+          event.stopPropagation()
+        }
+      >
+        <button
+          type="button"
+          onClick={() => handleViewClient(client)}
+          className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
         >
-          <button
-            type="button"
-            onClick={() =>
-              handleViewClient(
-                client
-              )
-            }
-            className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-          >
-            View
-          </button>
+          View
+        </button>
 
-          <button
-            type="button"
-            onClick={() =>
-              handleEditClient(
-                client
-              )
-            }
-            className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-          >
-            Edit
-          </button>
-        </div>,
-        document.body
-      );
-    };
+        <button
+          type="button"
+          onClick={() => handleEditClient(client)}
+          className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+        >
+          Edit
+        </button>
+      </div>,
+      document.body
+    );
+  };
 
   /* ============================================================
      TABLE ROW CLASS
   ============================================================ */
 
-  const getClientRowClass =
-    (client) => {
-      const isInactive =
-        String(
-          client.status || ""
-        )
-          .trim()
-          .toLowerCase() ===
-        "inactive";
+  const getClientRowClass = (client) => {
+    const isInactive =
+      String(client.status || "")
+        .trim()
+        .toLowerCase() === "inactive";
 
-      if (isInactive) {
-        return "border-b last:border-b-0 bg-gray-50 text-red-700 border-gray-100 hover:bg-red-50";
-      }
+    if (isInactive) {
+      return "border-b last:border-b-0 bg-gray-50 text-red-700 border-gray-100 hover:bg-red-50";
+    }
 
-      return "border-b border-gray-100 last:border-b-0 text-gray-900 hover:bg-gray-50";
-    };
+    return "border-b border-gray-100 last:border-b-0 text-gray-900 hover:bg-gray-50";
+  };
 
   /* ============================================================
      RENDER
@@ -1827,9 +938,7 @@ function Clientresource() {
 
       <div
         className="bg-white border-b border-gray-200 px-5 py-3"
-        onClick={(event) =>
-          event.stopPropagation()
-        }
+        onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
@@ -1854,9 +963,7 @@ function Clientresource() {
                 type="text"
                 value={search}
                 onChange={(event) =>
-                  setSearch(
-                    event.target.value
-                  )
+                  setSearch(event.target.value)
                 }
                 placeholder="Search..."
                 className="w-64 h-9 bg-white border border-gray-300 rounded-md pl-9 pr-3 text-sm outline-none focus:border-gray-500"
@@ -1868,9 +975,12 @@ function Clientresource() {
             </div>
 
             <button
-              onClick={
-                handleOpenAddClient
-              }
+              type="button"
+              onClick={() => {
+                setError("");
+                setSuccess("");
+                navigate("/resource-management/clients/add");
+              }}
               className="h-9 px-4 bg-gray-900 text-white rounded-md text-sm font-normal hover:bg-gray-800"
             >
               + Add Client
@@ -1893,9 +1003,8 @@ function Clientresource() {
             </p>
 
             <button
-              onClick={() =>
-                setError("")
-              }
+              type="button"
+              onClick={() => setError("")}
               className="text-red-700 font-normal"
             >
               ×
@@ -1912,9 +1021,8 @@ function Clientresource() {
             </p>
 
             <button
-              onClick={() =>
-                setSuccess("")
-              }
+              type="button"
+              onClick={() => setSuccess("")}
               className="text-green-700 font-normal"
             >
               ×
@@ -1940,13 +1048,9 @@ function Clientresource() {
                   {/* COUNTRY */}
 
                   <select
-                    value={
-                      countryFilter
-                    }
+                    value={countryFilter}
                     onChange={(event) =>
-                      setCountryFilter(
-                        event.target.value
-                      )
+                      setCountryFilter(event.target.value)
                     }
                     className="w-full h-12 px-4 border border-gray-300 rounded-md bg-white text-base text-gray-900 outline-none focus:border-gray-500"
                   >
@@ -1954,32 +1058,19 @@ function Clientresource() {
                       All Countries
                     </option>
 
-                    {countries.map(
-                      (country) => (
-                        <option
-                          key={
-                            country
-                          }
-                          value={
-                            country
-                          }
-                        >
-                          {country}
-                        </option>
-                      )
-                    )}
+                    {countries.map((country) => (
+                      <option key={country} value={country}>
+                        {country}
+                      </option>
+                    ))}
                   </select>
 
                   {/* MANAGER */}
 
                   <select
-                    value={
-                      managerFilter
-                    }
+                    value={managerFilter}
                     onChange={(event) =>
-                      setManagerFilter(
-                        event.target.value
-                      )
+                      setManagerFilter(event.target.value)
                     }
                     className="w-full h-12 px-4 border border-gray-300 rounded-md bg-white text-base text-gray-900 outline-none focus:border-gray-500"
                   >
@@ -1987,28 +1078,17 @@ function Clientresource() {
                       All Managers
                     </option>
 
-                    {managers.map(
-                      (manager) => (
-                        <option
-                          key={
-                            manager
-                          }
-                          value={
-                            manager
-                          }
-                        >
-                          {manager}
-                        </option>
-                      )
-                    )}
+                    {managers.map((manager) => (
+                      <option key={manager} value={manager}>
+                        {manager}
+                      </option>
+                    ))}
                   </select>
 
                   {/* QUALITY DESCRIPTION */}
 
                   <select
-                    value={
-                      qualityDescriptionFilter
-                    }
+                    value={qualityDescriptionFilter}
                     onChange={(event) =>
                       setQualityDescriptionFilter(
                         event.target.value
@@ -2020,32 +1100,19 @@ function Clientresource() {
                       All Quality Descriptions
                     </option>
 
-                    {qualityDescriptions.map(
-                      (quality) => (
-                        <option
-                          key={
-                            quality
-                          }
-                          value={
-                            quality
-                          }
-                        >
-                          {quality}
-                        </option>
-                      )
-                    )}
+                    {qualityDescriptions.map((quality) => (
+                      <option key={quality} value={quality}>
+                        {quality}
+                      </option>
+                    ))}
                   </select>
 
                   {/* STATUS */}
 
                   <select
-                    value={
-                      statusFilter
-                    }
+                    value={statusFilter}
                     onChange={(event) =>
-                      setStatusFilter(
-                        event.target.value
-                      )
+                      setStatusFilter(event.target.value)
                     }
                     className="w-full h-12 px-4 border border-gray-300 rounded-md bg-white text-base text-gray-900 outline-none focus:border-gray-500"
                   >
@@ -2115,8 +1182,7 @@ function Clientresource() {
 
                 <p
                   className={`text-2xl font-normal mt-1 ${
-                    healthWarnings >
-                    0
+                    healthWarnings > 0
                       ? "text-red-700"
                       : "text-gray-900"
                   }`}
@@ -2131,191 +1197,171 @@ function Clientresource() {
             ================================================== */}
 
             <div className="space-y-5">
-              {qualityDescriptions.map(
-                (group) => {
-                  const groupData =
-                    filteredClients.filter(
-                      (client) =>
-                        client.qualityDescription ===
-                        group
-                    );
+              {qualityDescriptions.map((group) => {
+                const groupData = filteredClients.filter(
+                  (client) =>
+                    client.qualityDescription === group
+                );
 
-                  return (
-                    <div
-                      key={
-                        group
-                      }
-                    >
-                      <h3 className="text-base font-normal text-gray-800 mb-2">
-                        <span className="font-normal">
-                          {group}
-                        </span>
-                      </h3>
+                return (
+                  <div key={group}>
+                    <h3 className="text-base font-normal text-gray-800 mb-2">
+                      <span className="font-normal">
+                        {group}
+                      </span>
+                    </h3>
 
-                      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
-                        <div className="w-full overflow-x-auto">
-                          <table className="w-full min-w-[1000px] table-fixed border-collapse">
-                            <colgroup>
-                              <col className="w-[15%]" />
-                              <col className="w-[17%]" />
-                              <col className="w-[15%]" />
-                              <col className="w-[11%]" />
-                              <col className="w-[8%]" />
-                              <col className="w-[10%]" />
-                              <col className="w-[10%]" />
-                              <col className="w-[8%]" />
-                              <col className="w-[6%]" />
-                            </colgroup>
+                    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                      <div className="w-full overflow-x-auto">
+                        <table className="w-full min-w-[1150px] table-fixed border-collapse">
+                          <colgroup>
+                            <col className="w-[13%]" />
+                            <col className="w-[15%]" />
+                            <col className="w-[13%]" />
+                            <col className="w-[10%]" />
+                            <col className="w-[12%]" />
+                            <col className="w-[7%]" />
+                            <col className="w-[9%]" />
+                            <col className="w-[8%]" />
+                            <col className="w-[7%]" />
+                            <col className="w-[6%]" />
+                          </colgroup>
 
-                            <thead>
-                              <tr className="bg-[#fafafa] border-b border-gray-200">
-                                <th className="px-4 py-3 text-left text-sm font-normal whitespace-nowrap">
-                                  Customer ID
-                                </th>
+                          <thead>
+                            <tr className="bg-[#fafafa] border-b border-gray-200">
+                              <th className="px-4 py-3 text-left text-sm font-normal whitespace-nowrap">
+                                Customer ID
+                              </th>
 
-                                <th className="px-4 py-3 text-left text-sm font-normal whitespace-nowrap">
-                                  Company Name
-                                </th>
+                              <th className="px-4 py-3 text-left text-sm font-normal whitespace-nowrap">
+                                Company Name
+                              </th>
 
-                                <th className="px-4 py-3 text-left text-sm font-normal whitespace-nowrap">
-                                  Account Manager
-                                </th>
+                              <th className="px-4 py-3 text-left text-sm font-normal whitespace-nowrap">
+                                Account Manager
+                              </th>
 
-                                <th className="px-4 py-3 text-left text-sm font-normal whitespace-nowrap">
-                                  Selling Rate
-                                </th>
+                              <th className="px-4 py-3 text-left text-sm font-normal whitespace-nowrap">
+                                Selling Rate
+                              </th>
 
-                                <th className="px-4 py-3 text-left text-sm font-normal whitespace-nowrap">
-                                  Ports
-                                </th>
+                              {/* STAR RATING COLUMN */}
+                              <th className="px-4 py-3 text-left text-sm font-normal whitespace-nowrap">
+                                Star Rating
+                              </th>
 
-                                <th className="px-4 py-3 text-left text-sm font-normal whitespace-nowrap">
-                                  Credits
-                                </th>
+                              <th className="px-4 py-3 text-left text-sm font-normal whitespace-nowrap">
+                                Ports
+                              </th>
 
+                              <th className="px-4 py-3 text-left text-sm font-normal whitespace-nowrap">
+                                Credits
+                              </th>
 
-                                <th className="px-4 py-3 text-left text-sm font-normal whitespace-nowrap">
-                                  Support Quality
-                                </th>
+                              <th className="px-4 py-3 text-left text-sm font-normal whitespace-nowrap">
+                                Support Quality
+                              </th>
 
-                                <th className="px-4 py-3 text-left text-sm font-normal whitespace-nowrap">
-                                  Status
-                                </th>
+                              <th className="px-4 py-3 text-left text-sm font-normal whitespace-nowrap">
+                                Status
+                              </th>
 
-                                <th></th>
+                              <th></th>
+                            </tr>
+                          </thead>
+
+                          <tbody>
+                            {groupData.length === 0 ? (
+                              <tr>
+                                <td
+                                  colSpan={10}
+                                  className="px-5 py-8 text-center text-sm text-gray-500"
+                                >
+                                  No client resources found.
+                                </td>
                               </tr>
-                            </thead>
+                            ) : (
+                              groupData.map((client) => (
+                                <tr
+                                  key={client.id}
+                                  className={getClientRowClass(
+                                    client
+                                  )}
+                                >
+                                  <td className="px-4 py-3 text-sm font-normal truncate">
+                                    {client.customerId || "-"}
+                                  </td>
 
-                            <tbody>
-                              {groupData.length ===
-                              0 ? (
-                                <tr>
+                                  <td className="px-4 py-3 text-sm truncate">
+                                    {client.company || "-"}
+                                  </td>
+
+                                  <td className="px-4 py-3 text-sm truncate">
+                                    {client.accountManager || "-"}
+                                  </td>
+
+                                  <td className="px-4 py-3 text-sm">
+                                    {client.sellingRate ?? "-"}
+                                  </td>
+
+                                  {/* STAR RATING VALUE */}
+                                  <td className="px-4 py-3 text-sm">
+                                    {renderStars(client.starRating)}
+                                  </td>
+
+                                  <td className="px-4 py-3 text-sm">
+                                    {client.ports ?? "-"}
+                                  </td>
+
+                                  <td className="px-4 py-3 text-sm">
+                                    {formatCredit(client.credit)}
+                                  </td>
+
+                                  <td className="px-4 py-3 text-sm">
+                                    {client.supportQuality || "-"}
+                                  </td>
+
+                                  <td className="px-4 py-3 text-sm font-normal">
+                                    {client.status || "-"}
+                                  </td>
+
                                   <td
-                                    colSpan={9}
-                                    className="px-5 py-8 text-center text-sm text-gray-500"
+                                    className="px-2 py-3 text-center"
+                                    onClick={(event) =>
+                                      event.stopPropagation()
+                                    }
                                   >
-                                    No client resources found.
+                                    <button
+                                      type="button"
+                                      onClick={(event) =>
+                                        handleOpenMenu(
+                                          event,
+                                          client.id
+                                        )
+                                      }
+                                      className="w-8 h-8 mx-auto flex items-center justify-center rounded-md hover:bg-black/5 text-gray-700 text-lg"
+                                      aria-label="Client actions"
+                                    >
+                                      ⋮
+                                    </button>
                                   </td>
                                 </tr>
-                              ) : (
-                                groupData.map(
-                                  (
-                                    client
-                                  ) => (
-                                    <tr
-                                      key={
-                                        client.id
-                                      }
-                                      className={getClientRowClass(
-                                        client
-                                      )}
-                                    >
-                                      <td className="px-4 py-3 text-sm font-normal truncate">
-                                        {client.customerId ||
-                                          "-"}
-                                      </td>
-
-                                      <td className="px-4 py-3 text-sm truncate">
-                                        {client.company ||
-                                          "-"}
-                                      </td>
-
-                                      <td className="px-4 py-3 text-sm truncate">
-                                        {client.accountManager ||
-                                          "-"}
-                                      </td>
-
-                                      <td className="px-4 py-3 text-sm">
-                                        {client.sellingRate ??
-                                          "-"}
-                                      </td>
-
-                                      <td className="px-4 py-3 text-sm">
-                                        {client.ports ??
-                                          "-"}
-                                      </td>
-
-                                      <td className="px-4 py-3 text-sm">
-                                        {formatCredit(
-                                          client.credit
-                                        )}
-                                      </td>
-
-
-                                      <td className="px-4 py-3 text-sm">
-                                        {client.supportQuality ||
-                                          "-"}
-                                      </td>
-
-                                      <td className="px-4 py-3 text-sm font-normal">
-                                        {client.status ||
-                                          "-"}
-                                      </td>
-
-                                      <td
-                                        className="px-2 py-3 text-center"
-                                        onClick={(
-                                          event
-                                        ) =>
-                                          event.stopPropagation()
-                                        }
-                                      >
-                                        <button
-                                          type="button"
-                                          onClick={(
-                                            event
-                                          ) =>
-                                            handleOpenMenu(
-                                              event,
-                                              client.id
-                                            )
-                                          }
-                                          className="w-8 h-8 mx-auto flex items-center justify-center rounded-md hover:bg-black/5 text-gray-700 text-lg"
-                                          aria-label="Client actions"
-                                        >
-                                          ⋮
-                                        </button>
-                                      </td>
-                                    </tr>
-                                  )
-                                )
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
                       </div>
                     </div>
-                  );
-                }
-              )}
+                  </div>
+                );
+              })}
 
               {/* ==================================================
                   RESOURCES WITHOUT QUALITY DESCRIPTION
               ================================================== */}
 
               {filteredClients.some(
-                (client) =>
-                  !client.qualityDescription
+                (client) => !client.qualityDescription
               ) && (
                 <div>
                   <h3 className="text-base font-normal text-gray-800 mb-2">
@@ -2326,18 +1372,19 @@ function Clientresource() {
 
                   <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
                     <div className="w-full overflow-x-auto">
-                      <table className="w-full min-w-[1000px] table-fixed border-collapse">
+                      <table className="w-full min-w-[1150px] table-fixed border-collapse">
                         <colgroup>
-                              <col className="w-[15%]" />
-                              <col className="w-[17%]" />
-                              <col className="w-[15%]" />
-                              <col className="w-[11%]" />
-                              <col className="w-[8%]" />
-                              <col className="w-[10%]" />
-                              <col className="w-[10%]" />
-                              <col className="w-[8%]" />
-                              <col className="w-[6%]" />
-                            </colgroup>
+                          <col className="w-[13%]" />
+                          <col className="w-[15%]" />
+                          <col className="w-[13%]" />
+                          <col className="w-[10%]" />
+                          <col className="w-[12%]" />
+                          <col className="w-[7%]" />
+                          <col className="w-[9%]" />
+                          <col className="w-[8%]" />
+                          <col className="w-[7%]" />
+                          <col className="w-[6%]" />
+                        </colgroup>
 
                         <thead>
                           <tr className="bg-[#fafafa] border-b border-gray-200">
@@ -2357,6 +1404,11 @@ function Clientresource() {
                               Selling Rate
                             </th>
 
+                            {/* STAR RATING COLUMN */}
+                            <th className="px-4 py-3 text-left text-sm font-normal whitespace-nowrap">
+                              Star Rating
+                            </th>
+
                             <th className="px-4 py-3 text-left text-sm font-normal whitespace-nowrap">
                               Ports
                             </th>
@@ -2364,7 +1416,6 @@ function Clientresource() {
                             <th className="px-4 py-3 text-left text-sm font-normal whitespace-nowrap">
                               Credits
                             </th>
-
 
                             <th className="px-4 py-3 text-left text-sm font-normal whitespace-nowrap">
                               Support Quality
@@ -2384,87 +1435,72 @@ function Clientresource() {
                               (client) =>
                                 !client.qualityDescription
                             )
-                            .map(
-                              (
-                                client
-                              ) => (
-                                <tr
-                                  key={
-                                    client.id
+                            .map((client) => (
+                              <tr
+                                key={client.id}
+                                className={getClientRowClass(
+                                  client
+                                )}
+                              >
+                                <td className="px-4 py-3 text-sm font-normal truncate">
+                                  {client.customerId || "-"}
+                                </td>
+
+                                <td className="px-4 py-3 text-sm truncate">
+                                  {client.company || "-"}
+                                </td>
+
+                                <td className="px-4 py-3 text-sm truncate">
+                                  {client.accountManager || "-"}
+                                </td>
+
+                                <td className="px-4 py-3 text-sm">
+                                  {client.sellingRate ?? "-"}
+                                </td>
+
+                                {/* STAR RATING VALUE */}
+                                <td className="px-4 py-3 text-sm">
+                                  {renderStars(client.starRating)}
+                                </td>
+
+                                <td className="px-4 py-3 text-sm">
+                                  {client.ports ?? "-"}
+                                </td>
+
+                                <td className="px-4 py-3 text-sm">
+                                  {formatCredit(client.credit)}
+                                </td>
+
+                                <td className="px-4 py-3 text-sm">
+                                  {client.supportQuality || "-"}
+                                </td>
+
+                                <td className="px-4 py-3 text-sm font-normal">
+                                  {client.status || "-"}
+                                </td>
+
+                                <td
+                                  className="px-2 py-3 text-center"
+                                  onClick={(event) =>
+                                    event.stopPropagation()
                                   }
-                                  className={getClientRowClass(
-                                    client
-                                  )}
                                 >
-                                  <td className="px-4 py-3 text-sm font-normal truncate">
-                                    {client.customerId ||
-                                      "-"}
-                                  </td>
-
-                                  <td className="px-4 py-3 text-sm truncate">
-                                    {client.company ||
-                                      "-"}
-                                  </td>
-
-                                  <td className="px-4 py-3 text-sm truncate">
-                                    {client.accountManager ||
-                                      "-"}
-                                  </td>
-
-                                  <td className="px-4 py-3 text-sm">
-                                    {client.sellingRate ??
-                                      "-"}
-                                  </td>
-
-                                  <td className="px-4 py-3 text-sm">
-                                    {client.ports ??
-                                      "-"}
-                                  </td>
-
-                                  <td className="px-4 py-3 text-sm">
-                                    {formatCredit(
-                                      client.credit
-                                    )}
-                                  </td>
-
-
-                                  <td className="px-4 py-3 text-sm">
-                                    {client.supportQuality ||
-                                      "-"}
-                                  </td>
-
-                                  <td className="px-4 py-3 text-sm font-normal">
-                                    {client.status ||
-                                      "-"}
-                                  </td>
-
-                                  <td
-                                    className="px-2 py-3 text-center"
-                                    onClick={(
-                                      event
-                                    ) =>
-                                      event.stopPropagation()
+                                  <button
+                                    type="button"
+                                    onClick={(event) =>
+                                      handleOpenMenu(
+                                        event,
+                                        client.id
+                                      )
                                     }
+                                    className="w-8 h-8 mx-auto flex items-center justify-center rounded-md hover:bg-black/5 text-gray-700 text-lg"
+                                    aria-label="Client actions"
                                   >
-                                    <button
-                                      type="button"
-                                      onClick={(
-                                        event
-                                      ) =>
-                                        handleOpenMenu(
-                                          event,
-                                          client.id
-                                        )
-                                      }
-                                      className="w-8 h-8 mx-auto flex items-center justify-center rounded-md hover:bg-black/5 text-gray-700 text-lg"
-                                      aria-label="Client actions"
-                                    >
-                                      ⋮
-                                    </button>
-                                  </td>
-                                </tr>
-                              )
-                            )}
+                                    ⋮
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
                         </tbody>
                       </table>
                     </div>
@@ -2472,8 +1508,7 @@ function Clientresource() {
                 </div>
               )}
 
-              {filteredClients.length ===
-                0 && (
+              {filteredClients.length === 0 && (
                 <div className="bg-white border border-gray-200 rounded-lg p-8 text-center">
                   <p className="text-sm text-gray-500">
                     No client resources available.
@@ -2492,158 +1527,54 @@ function Clientresource() {
       {renderActionMenu()}
 
       {/* ========================================================
-          ADD CLIENT MODAL
+          EDIT CLIENT MODAL
       ======================================================== */}
 
-      {showAddClient && (
+      {showEditClient && editingClient && (
         <div
           className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center p-4"
-          onClick={
-            handleCloseAddClient
-          }
+          onClick={() => {
+            setShowEditClient(false);
+            setEditingClient(null);
+          }}
         >
           <div
             className="bg-white w-full max-w-2xl rounded-lg shadow-xl max-h-[90vh] overflow-y-auto"
-            onClick={(event) =>
-              event.stopPropagation()
-            }
+            onClick={(event) => event.stopPropagation()}
           >
             <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-normal text-gray-900">
-                  Add Client
-                </h2>
-
-                <p className="text-sm text-gray-500 mt-1">
-                  Enter the existing Customer ID
-                  to fetch customer information.
-                </p>
-              </div>
+              <h2 className="text-lg font-normal text-gray-900">
+                Edit Client Resource
+              </h2>
 
               <button
-                onClick={
-                  handleCloseAddClient
-                }
+                type="button"
+                onClick={() => {
+                  setShowEditClient(false);
+                  setEditingClient(null);
+                }}
                 className="text-gray-500 hover:text-gray-900 text-xl"
               >
                 ×
               </button>
             </div>
 
-            <form
-              onSubmit={
-                handleAddClient
-              }
-              className="p-5"
-            >
-              {/* CUSTOMER ID */}
+            <form onSubmit={handleSaveEdit} className="p-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* CUSTOMER ID */}
 
-              <div className="mb-5">
-                <label className="block text-sm text-gray-700 mb-1.5">
-                  Customer ID
-                </label>
+                <div>
+                  <label className="block text-sm text-gray-700 mb-1.5">
+                    Customer ID
+                  </label>
 
-                <div className="relative">
                   <input
-                    required
-                    type="text"
-                    value={
-                      customerSearch
-                    }
-                    onChange={
-                      handleCustomerSearchChange
-                    }
-                    onBlur={() => {
-                      if (
-                        customerSearch.trim() &&
-                        !selectedCustomer
-                      ) {
-                        fetchCustomerById(
-                          customerSearch
-                        );
-                      }
-                    }}
-                    onKeyDown={(
-                      event
-                    ) => {
-                      if (
-                        event.key ===
-                        "Enter"
-                      ) {
-                        event.preventDefault();
-
-                        if (
-                          customerSearch.trim()
-                        ) {
-                          fetchCustomerById(
-                            customerSearch
-                          );
-                        }
-                      }
-                    }}
-                    placeholder="Type Customer ID..."
-                    className="w-full h-10 border border-gray-300 rounded-md px-3 text-sm outline-none focus:border-gray-500"
-                    autoComplete="off"
+                    value={editingClient.customerId || ""}
+                    readOnly
+                    className="w-full h-10 border border-gray-200 bg-gray-50 rounded-md px-3 text-sm outline-none"
                   />
-
-                  {customerLookupLoading && (
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">
-                      Fetching...
-                    </div>
-                  )}
-
-                  {customerSuggestions.length >
-                    0 &&
-                    !selectedCustomer && (
-                      <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                        {customerSuggestions.map(
-                          (
-                            customer,
-                            index
-                          ) => (
-                            <button
-                              key={
-                                customer.id ||
-                                customer.customer_id ||
-                                index
-                              }
-                              type="button"
-                              onMouseDown={(
-                                event
-                              ) =>
-                                event.preventDefault()
-                              }
-                              onClick={() =>
-                                handleSelectCustomer(
-                                  customer
-                                )
-                              }
-                              className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
-                            >
-                              <div className="text-sm font-normal text-gray-900">
-                                {customer.customer_id ||
-                                  "-"}
-                              </div>
-                            </button>
-                          )
-                        )}
-                      </div>
-                    )}
                 </div>
 
-                {selectedCustomer && (
-                  <div className="mt-2 bg-green-50 border border-green-200 rounded-md px-3 py-2">
-                    <p className="text-xs text-green-700">
-                      Customer information fetched
-                      successfully.
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* AUTO FETCHED CUSTOMER DATA */}
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
                 {/* COMPANY */}
 
                 <div>
@@ -2652,15 +1583,9 @@ function Clientresource() {
                   </label>
 
                   <input
-                    value={
-                      selectedCustomer
-                        ?.company
-                        ?.company_name ||
-                      ""
-                    }
+                    value={editingClient.company || ""}
                     readOnly
-                    className="w-full h-10 border border-gray-200 bg-gray-50 rounded-md px-3 text-sm text-gray-700 outline-none"
-                    placeholder="Automatically fetched"
+                    className="w-full h-10 border border-gray-200 bg-gray-50 rounded-md px-3 text-sm outline-none"
                   />
                 </div>
 
@@ -2672,19 +1597,13 @@ function Clientresource() {
                   </label>
 
                   <input
-                    value={
-                      selectedCustomer
-                        ?.company
-                        ?.account_manager ||
-                      ""
-                    }
+                    value={editingClient.accountManager || ""}
                     readOnly
-                    className="w-full h-10 border border-gray-200 bg-gray-50 rounded-md px-3 text-sm text-gray-700 outline-none"
-                    placeholder="Automatically fetched"
+                    className="w-full h-10 border border-gray-200 bg-gray-50 rounded-md px-3 text-sm outline-none"
                   />
                 </div>
 
-                {/* COUNTRY - EDITABLE */}
+                {/* COUNTRY */}
 
                 <div>
                   <label className="block text-sm text-gray-700 mb-1.5">
@@ -2692,32 +1611,17 @@ function Clientresource() {
                   </label>
 
                   <input
-                    type="text"
-                    value={
-                      newClient.country ||
-                      ""
+                    value={editingClient.country || ""}
+                    onChange={(event) =>
+                      setEditingClient((previous) => ({
+                        ...previous,
+                        country: event.target.value,
+                      }))
                     }
-                    onChange={(
-                      event
-                    ) =>
-                      setNewClient(
-                        (previous) => ({
-                          ...previous,
-                          country:
-                            event.target
-                              .value,
-                        })
-                      )
-                    }
-                    className="w-full h-10 border border-gray-300 rounded-md px-3 text-sm text-gray-900 outline-none focus:border-gray-500"
-                    placeholder="Enter country"
+                    className="w-full h-10 border border-gray-300 rounded-md px-3 text-sm outline-none"
                   />
                 </div>
-              </div>
 
-              {/* RESOURCE DATA */}
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* SELLING RATE */}
 
                 <div>
@@ -2729,24 +1633,57 @@ function Clientresource() {
                     required
                     type="number"
                     step="0.000001"
-                    value={
-                      newClient.sellingRate
-                    }
-                    onChange={(
-                      event
-                    ) =>
-                      setNewClient(
-                        (previous) => ({
-                          ...previous,
-                          sellingRate:
-                            event.target
-                              .value,
-                        })
-                      )
+                    value={editingClient.sellingRate}
+                    onChange={(event) =>
+                      setEditingClient((previous) => ({
+                        ...previous,
+                        sellingRate: event.target.value,
+                      }))
                     }
                     className="w-full h-10 border border-gray-300 rounded-md px-3 text-sm outline-none"
-                    placeholder="Enter selling rate"
                   />
+                </div>
+
+                {/* STAR RATING EDIT OPTION */}
+
+                <div>
+                  <label className="block text-sm text-gray-700 mb-1.5">
+                    Star Rating
+                  </label>
+
+                  <div className="h-10 flex items-center gap-2">
+                    <div className="flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() =>
+                            setEditingClient((previous) => ({
+                              ...previous,
+                              starRating: star,
+                            }))
+                          }
+                          className={`text-2xl leading-none ${
+                            star <=
+                            Number(editingClient.starRating || 0)
+                              ? "text-amber-500"
+                              : "text-gray-300"
+                          }`}
+                          aria-label={`${star} star${star > 1 ? "s" : ""}`}
+                          aria-pressed={
+                            Number(editingClient.starRating || 0) ===
+                            star
+                          }
+                        >
+                          ★
+                        </button>
+                      ))}
+                    </div>
+
+                    <span className="text-sm text-gray-500">
+                      {Number(editingClient.starRating || 0)}/5
+                    </span>
+                  </div>
                 </div>
 
                 {/* PORTS */}
@@ -2758,23 +1695,14 @@ function Clientresource() {
 
                   <input
                     type="number"
-                    value={
-                      newClient.ports
-                    }
-                    onChange={(
-                      event
-                    ) =>
-                      setNewClient(
-                        (previous) => ({
-                          ...previous,
-                          ports:
-                            event.target
-                              .value,
-                        })
-                      )
+                    value={editingClient.ports}
+                    onChange={(event) =>
+                      setEditingClient((previous) => ({
+                        ...previous,
+                        ports: event.target.value,
+                      }))
                     }
                     className="w-full h-10 border border-gray-300 rounded-md px-3 text-sm outline-none"
-                    placeholder="Enter ports"
                   />
                 </div>
 
@@ -2788,23 +1716,33 @@ function Clientresource() {
                   <input
                     type="number"
                     step="0.01"
-                    value={
-                      newClient.credit
-                    }
-                    onChange={(
-                      event
-                    ) =>
-                      setNewClient(
-                        (previous) => ({
-                          ...previous,
-                          credit:
-                            event.target
-                              .value,
-                        })
-                      )
+                    value={editingClient.credit}
+                    onChange={(event) =>
+                      setEditingClient((previous) => ({
+                        ...previous,
+                        credit: event.target.value,
+                      }))
                     }
                     className="w-full h-10 border border-gray-300 rounded-md px-3 text-sm outline-none"
-                    placeholder="Enter credit"
+                  />
+                </div>
+
+                {/* ROUTE TYPE */}
+
+                <div>
+                  <label className="block text-sm text-gray-700 mb-1.5">
+                    Route Type
+                  </label>
+
+                  <input
+                    value={editingClient.routeType || ""}
+                    onChange={(event) =>
+                      setEditingClient((previous) => ({
+                        ...previous,
+                        routeType: event.target.value,
+                      }))
+                    }
+                    className="w-full h-10 border border-gray-300 rounded-md px-3 text-sm outline-none"
                   />
                 </div>
 
@@ -2816,24 +1754,14 @@ function Clientresource() {
                   </label>
 
                   <input
-                    type="text"
-                    value={
-                      newClient.supportQuality
-                    }
-                    onChange={(
-                      event
-                    ) =>
-                      setNewClient(
-                        (previous) => ({
-                          ...previous,
-                          supportQuality:
-                            event.target
-                              .value,
-                        })
-                      )
+                    value={editingClient.supportQuality || ""}
+                    onChange={(event) =>
+                      setEditingClient((previous) => ({
+                        ...previous,
+                        supportQuality: event.target.value,
+                      }))
                     }
                     className="w-full h-10 border border-gray-300 rounded-md px-3 text-sm outline-none"
-                    placeholder="Enter support quality"
                   />
                 </div>
 
@@ -2845,24 +1773,14 @@ function Clientresource() {
                   </label>
 
                   <input
-                    type="text"
-                    value={
-                      newClient.status
-                    }
-                    onChange={(
-                      event
-                    ) =>
-                      setNewClient(
-                        (previous) => ({
-                          ...previous,
-                          status:
-                            event.target
-                              .value,
-                        })
-                      )
+                    value={editingClient.status || ""}
+                    onChange={(event) =>
+                      setEditingClient((previous) => ({
+                        ...previous,
+                        status: event.target.value,
+                      }))
                     }
                     className="w-full h-10 border border-gray-300 rounded-md px-3 text-sm outline-none"
-                    placeholder="Enter status"
                   />
                 </div>
 
@@ -2873,135 +1791,43 @@ function Clientresource() {
                     Quality Description
                   </label>
 
-                  {!useManualQualityDescription ? (
-                    <>
-                      <select
-                        value={
-                          newClient.qualityDescriptionId
-                        }
-                        onChange={(
-                          event
-                        ) =>
-                          setNewClient(
-                            (previous) => ({
-                              ...previous,
-                              qualityDescriptionId:
-                                event.target
-                                  .value,
-                              manualQualityDescription:
-                                "",
-                            })
-                          )
-                        }
-                        className="w-full h-10 border border-gray-300 rounded-md px-3 text-sm outline-none bg-white"
+                  <select
+                    value={
+                      editingClient.qualityDescriptionId || ""
+                    }
+                    onChange={(event) =>
+                      setEditingClient((previous) => ({
+                        ...previous,
+                        qualityDescriptionId:
+                          event.target.value,
+                      }))
+                    }
+                    className="w-full h-10 border border-gray-300 rounded-md px-3 text-sm outline-none bg-white"
+                  >
+                    <option value="">
+                      Select quality description
+                    </option>
+
+                    {qualityDescriptionsData.map((quality) => (
+                      <option
+                        key={quality.id}
+                        value={quality.id}
                       >
-                        <option value="">
-                          Select quality description
-                        </option>
-
-                        {qualityDescriptionsData.map(
-                          (
-                            quality
-                          ) => (
-                            <option
-                              key={
-                                quality.id
-                              }
-                              value={
-                                quality.id
-                              }
-                            >
-                              {getQualityDescription(
-                                quality
-                              ) ||
-                                `Quality #${quality.id}`}
-                            </option>
-                          )
-                        )}
-                      </select>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setUseManualQualityDescription(
-                            true
-                          );
-
-                          setNewClient(
-                            (
-                              previous
-                            ) => ({
-                              ...previous,
-                              qualityDescriptionId:
-                                "",
-                              manualQualityDescription:
-                                "",
-                            })
-                          );
-                        }}
-                        className="mt-2 text-sm text-blue-600 hover:text-blue-800"
-                      >
-                        + Enter Quality Description Manually
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <input
-                        type="text"
-                        value={
-                          newClient.manualQualityDescription
-                        }
-                        onChange={(
-                          event
-                        ) =>
-                          setNewClient(
-                            (
-                              previous
-                            ) => ({
-                              ...previous,
-                              manualQualityDescription:
-                                event
-                                  .target
-                                  .value,
-                            })
-                          )
-                        }
-                        placeholder="Enter quality description manually"
-                        className="w-full h-10 border border-gray-300 rounded-md px-3 text-sm outline-none focus:border-gray-500"
-                      />
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setUseManualQualityDescription(
-                            false
-                          );
-
-                          setNewClient(
-                            (
-                              previous
-                            ) => ({
-                              ...previous,
-                              manualQualityDescription:
-                                "",
-                            })
-                          );
-                        }}
-                        className="mt-2 text-sm text-gray-500 hover:text-gray-800"
-                      >
-                        ← Select from existing descriptions
-                      </button>
-                    </>
-                  )}
+                        {getQualityDescription(quality) ||
+                          `Quality #${quality.id}`}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
               <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-gray-200">
                 <button
                   type="button"
-                  onClick={
-                    handleCloseAddClient
-                  }
+                  onClick={() => {
+                    setShowEditClient(false);
+                    setEditingClient(null);
+                  }}
                   className="h-10 px-4 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50"
                 >
                   Cancel
@@ -3011,7 +1837,7 @@ function Clientresource() {
                   type="submit"
                   className="h-10 px-5 bg-gray-900 text-white rounded-md text-sm hover:bg-gray-800"
                 >
-                  Add Client
+                  Save Changes
                 </button>
               </div>
             </form>
@@ -3020,624 +1846,206 @@ function Clientresource() {
       )}
 
       {/* ========================================================
-          EDIT CLIENT MODAL
-      ======================================================== */}
-
-      {showEditClient &&
-        editingClient && (
-          <div
-            className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center p-4"
-            onClick={() => {
-              setShowEditClient(
-                false
-              );
-              setEditingClient(
-                null
-              );
-            }}
-          >
-            <div
-              className="bg-white w-full max-w-2xl rounded-lg shadow-xl max-h-[90vh] overflow-y-auto"
-              onClick={(event) =>
-                event.stopPropagation()
-              }
-            >
-              <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
-                <h2 className="text-lg font-normal text-gray-900">
-                  Edit Client Resource
-                </h2>
-
-                <button
-                  onClick={() => {
-                    setShowEditClient(
-                      false
-                    );
-                    setEditingClient(
-                      null
-                    );
-                  }}
-                  className="text-gray-500 hover:text-gray-900 text-xl"
-                >
-                  ×
-                </button>
-              </div>
-
-              <form
-                onSubmit={
-                  handleSaveEdit
-                }
-                className="p-5"
-              >
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* CUSTOMER ID */}
-
-                  <div>
-                    <label className="block text-sm text-gray-700 mb-1.5">
-                      Customer ID
-                    </label>
-
-                    <input
-                      value={
-                        editingClient.customerId ||   
-                        ""
-                      }
-                      readOnly
-                      className="w-full h-10 border border-gray-200 bg-gray-50 rounded-md px-3 text-sm outline-none"
-                    />
-                  </div>
-
-                  {/* COMPANY */}
-
-                  <div>
-                    <label className="block text-sm text-gray-700 mb-1.5">
-                      Company
-                    </label>
-
-                    <input
-                      value={
-                        editingClient.company ||
-                        ""
-                      }
-                      readOnly
-                      className="w-full h-10 border border-gray-200 bg-gray-50 rounded-md px-3 text-sm outline-none"
-                    />
-                  </div>
-
-                  {/* ACCOUNT MANAGER */}
-
-                  <div>
-                    <label className="block text-sm text-gray-700 mb-1.5">
-                      Account Manager
-                    </label>
-
-                    <input
-                      value={
-                        editingClient.accountManager ||
-                        ""
-                      }
-                      readOnly
-                      className="w-full h-10 border border-gray-200 bg-gray-50 rounded-md px-3 text-sm outline-none"
-                    />
-                  </div>
-
-                  {/* COUNTRY */}
-
-                  <div>
-                    <label className="block text-sm text-gray-700 mb-1.5">
-                      Country
-                    </label>
-
-                    <input
-                      value={
-                        editingClient.country ||
-                        ""
-                      }
-                      onChange={(
-                        event
-                      ) =>
-                        setEditingClient(
-                          (
-                            previous
-                          ) => ({
-                            ...previous,
-                            country:
-                              event.target
-                                .value,
-                          })
-                        )
-                      }
-                      className="w-full h-10 border border-gray-300 rounded-md px-3 text-sm outline-none"
-                    />
-                  </div>
-
-                  {/* SELLING RATE */}
-
-                  <div>
-                    <label className="block text-sm text-gray-700 mb-1.5">
-                      Selling Rate
-                    </label>
-
-                    <input
-                      required
-                      type="number"
-                      step="0.000001"
-                      value={
-                        editingClient.sellingRate
-                      }
-                      onChange={(
-                        event
-                      ) =>
-                        setEditingClient(
-                          (
-                            previous
-                          ) => ({
-                            ...previous,
-                            sellingRate:
-                              event.target
-                                .value,
-                          })
-                        )
-                      }
-                      className="w-full h-10 border border-gray-300 rounded-md px-3 text-sm outline-none"
-                    />
-                  </div>
-
-                  {/* PORTS */}
-
-                  <div>
-                    <label className="block text-sm text-gray-700 mb-1.5">
-                      Ports
-                    </label>
-
-                    <input
-                      type="number"
-                      value={
-                        editingClient.ports
-                      }
-                      onChange={(
-                        event
-                      ) =>
-                        setEditingClient(
-                          (
-                            previous
-                          ) => ({
-                            ...previous,
-                            ports:
-                              event.target
-                                .value,
-                          })
-                        )
-                      }
-                      className="w-full h-10 border border-gray-300 rounded-md px-3 text-sm outline-none"
-                    />
-                  </div>
-
-                  {/* CREDIT */}
-
-                  <div>
-                    <label className="block text-sm text-gray-700 mb-1.5">
-                      Credit
-                    </label>
-
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={
-                        editingClient.credit
-                      }
-                      onChange={(
-                        event
-                      ) =>
-                        setEditingClient(
-                          (
-                            previous
-                          ) => ({
-                            ...previous,
-                            credit:
-                              event.target
-                                .value,
-                          })
-                        )
-                      }
-                      className="w-full h-10 border border-gray-300 rounded-md px-3 text-sm outline-none"
-                    />
-                  </div>
-
-                  {/* ROUTE TYPE
-                      Kept here because this is your existing
-                      resource data. It has only been removed
-                      from the Add Client form as requested.
-                  */}
-
-                  <div>
-                    <label className="block text-sm text-gray-700 mb-1.5">
-                      Route Type
-                    </label>
-
-                    <input
-                      value={
-                        editingClient.routeType ||
-                        ""
-                      }
-                      onChange={(
-                        event
-                      ) =>
-                        setEditingClient(
-                          (
-                            previous
-                          ) => ({
-                            ...previous,
-                            routeType:
-                              event.target
-                                .value,
-                          })
-                        )
-                      }
-                      className="w-full h-10 border border-gray-300 rounded-md px-3 text-sm outline-none"
-                    />
-                  </div>
-
-                  {/* SUPPORT QUALITY */}
-
-                  <div>
-                    <label className="block text-sm text-gray-700 mb-1.5">
-                      Support Quality
-                    </label>
-
-                    <input
-                      value={
-                        editingClient.supportQuality ||
-                        ""
-                      }
-                      onChange={(
-                        event
-                      ) =>
-                        setEditingClient(
-                          (
-                            previous
-                          ) => ({
-                            ...previous,
-                            supportQuality:
-                              event.target
-                                .value,
-                          })
-                        )
-                      }
-                      className="w-full h-10 border border-gray-300 rounded-md px-3 text-sm outline-none"
-                    />
-                  </div>
-
-                  {/* STATUS */}
-
-                  <div>
-                    <label className="block text-sm text-gray-700 mb-1.5">
-                      Status
-                    </label>
-
-                    <input
-                      value={
-                        editingClient.status ||
-                        ""
-                      }
-                      onChange={(
-                        event
-                      ) =>
-                        setEditingClient(
-                          (
-                            previous
-                          ) => ({
-                            ...previous,
-                            status:
-                              event.target
-                                .value,
-                          })
-                        )
-                      }
-                      className="w-full h-10 border border-gray-300 rounded-md px-3 text-sm outline-none"
-                    />
-                  </div>
-
-                  {/* QUALITY DESCRIPTION */}
-
-                  <div className="md:col-span-2">
-                    <label className="block text-sm text-gray-700 mb-1.5">
-                      Quality Description
-                    </label>
-
-                    <select
-                      value={
-                        editingClient.qualityDescriptionId ||
-                        ""
-                      }
-                      onChange={(
-                        event
-                      ) =>
-                        setEditingClient(
-                          (
-                            previous
-                          ) => ({
-                            ...previous,
-                            qualityDescriptionId:
-                              event.target
-                                .value,
-                          })
-                        )
-                      }
-                      className="w-full h-10 border border-gray-300 rounded-md px-3 text-sm outline-none bg-white"
-                    >
-                      <option value="">
-                        Select quality description
-                      </option>
-
-                      {qualityDescriptionsData.map(
-                        (
-                          quality
-                        ) => (
-                          <option
-                            key={
-                              quality.id
-                            }
-                            value={
-                              quality.id
-                            }
-                          >
-                            {getQualityDescription(
-                              quality
-                            ) ||
-                              `Quality #${quality.id}`}
-                          </option>
-                        )
-                      )}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-gray-200">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowEditClient(
-                        false
-                      );
-                      setEditingClient(
-                        null
-                      );
-                    }}
-                    className="h-10 px-4 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50"
-                  >
-                    Cancel
-                  </button>
-
-                  <button
-                    type="submit"
-                    className="h-10 px-5 bg-gray-900 text-white rounded-md text-sm hover:bg-gray-800"
-                  >
-                    Save Changes
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-      {/* ========================================================
           VIEW CLIENT MODAL
       ======================================================== */}
 
-      {showViewClient &&
-        viewingClient && (
+      {showViewClient && viewingClient && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center p-4"
+          onClick={() => setShowViewClient(false)}
+        >
           <div
-            className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center p-4"
-            onClick={() =>
-              setShowViewClient(
-                false
-              )
-            }
+            className="bg-white w-full max-w-xl rounded-lg shadow-xl"
+            onClick={(event) => event.stopPropagation()}
           >
-            <div
-              className="bg-white w-full max-w-xl rounded-lg shadow-xl"
-              onClick={(event) =>
-                event.stopPropagation()
-              }
-            >
-              <div className="px-6 py-5 border-b border-gray-200 flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-normal text-gray-900">
-                    Client Details
-                  </h2>
+            <div className="px-6 py-5 border-b border-gray-200 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-normal text-gray-900">
+                  Client Details
+                </h2>
 
-                  <p className="text-sm text-gray-500 mt-1">
-                    Complete client resource information.
+                <p className="text-sm text-gray-500 mt-1">
+                  Complete client resource information.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowViewClient(false)}
+                className="text-gray-500 hover:text-gray-900 text-xl"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="p-6">
+              <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+                {/* CUSTOMER ID */}
+
+                <div>
+                  <p className="text-xs text-gray-500">
+                    Customer ID
+                  </p>
+
+                  <p className="text-sm font-normal text-gray-900 mt-1">
+                    {viewingClient.customerId || "-"}
                   </p>
                 </div>
 
-                <button
-                  onClick={() =>
-                    setShowViewClient(
-                      false
-                    )
-                  }
-                  className="text-gray-500 hover:text-gray-900 text-xl"
-                >
-                  ×
-                </button>
+                {/* COMPANY */}
+
+                <div>
+                  <p className="text-xs text-gray-500">
+                    Company
+                  </p>
+
+                  <p className="text-sm font-normal text-gray-900 mt-1">
+                    {viewingClient.company || "-"}
+                  </p>
+                </div>
+
+                {/* ACCOUNT MANAGER */}
+
+                <div>
+                  <p className="text-xs text-gray-500">
+                    Account Manager
+                  </p>
+
+                  <p className="text-sm font-normal text-gray-900 mt-1">
+                    {viewingClient.accountManager || "-"}
+                  </p>
+                </div>
+
+                {/* COUNTRY */}
+
+                <div>
+                  <p className="text-xs text-gray-500">
+                    Country
+                  </p>
+
+                  <p className="text-sm font-normal text-gray-900 mt-1">
+                    {viewingClient.country || "-"}
+                  </p>
+                </div>
+
+                {/* SELLING RATE */}
+
+                <div>
+                  <p className="text-xs text-gray-500">
+                    Selling Rate
+                  </p>
+
+                  <p className="text-sm font-normal text-gray-900 mt-1">
+                    {viewingClient.sellingRate ?? "-"}
+                  </p>
+                </div>
+
+                {/* STAR RATING */}
+
+                <div>
+                  <p className="text-xs text-gray-500">
+                    Star Rating
+                  </p>
+
+                  <p className="text-sm font-normal text-gray-900 mt-1">
+                    {renderStars(viewingClient.starRating)}
+                  </p>
+                </div>
+
+                {/* PORTS */}
+
+                <div>
+                  <p className="text-xs text-gray-500">
+                    Ports
+                  </p>
+
+                  <p className="text-sm font-normal text-gray-900 mt-1">
+                    {viewingClient.ports ?? "-"}
+                  </p>
+                </div>
+
+                {/* CREDIT */}
+
+                <div>
+                  <p className="text-xs text-gray-500">
+                    Credit
+                  </p>
+
+                  <p className="text-sm font-normal text-gray-900 mt-1">
+                    {formatCredit(viewingClient.credit)}
+                  </p>
+                </div>
+
+                {/* ROUTE TYPE */}
+
+                <div>
+                  <p className="text-xs text-gray-500">
+                    Route Type
+                  </p>
+
+                  <p className="text-sm font-normal text-gray-900 mt-1">
+                    {viewingClient.routeType || "-"}
+                  </p>
+                </div>
+
+                {/* SUPPORT QUALITY */}
+
+                <div>
+                  <p className="text-xs text-gray-500">
+                    Support Quality
+                  </p>
+
+                  <p className="text-sm font-normal text-gray-900 mt-1">
+                    {viewingClient.supportQuality || "-"}
+                  </p>
+                </div>
+
+                {/* STATUS */}
+
+                <div>
+                  <p className="text-xs text-gray-500">
+                    Status
+                  </p>
+
+                  <p
+                    className={`text-sm font-normal mt-1 ${
+                      String(viewingClient.status || "")
+                        .trim()
+                        .toLowerCase() === "inactive"
+                        ? "text-red-700"
+                        : "text-gray-900"
+                    }`}
+                  >
+                    {viewingClient.status || "-"}
+                  </p>
+                </div>
+
+                {/* QUALITY DESCRIPTION */}
+
+                <div className="col-span-2">
+                  <p className="text-xs text-gray-500">
+                    Quality Description
+                  </p>
+
+                  <p className="text-sm font-normal text-gray-900 mt-1">
+                    {viewingClient.qualityDescription || "-"}
+                  </p>
+                </div>
               </div>
 
-              <div className="p-6">
-                <div className="grid grid-cols-2 gap-x-8 gap-y-5">
-                  {/* CUSTOMER ID */}
-
-                  <div>
-                    <p className="text-xs text-gray-500">
-                      Customer ID
-                    </p>
-
-                    <p className="text-sm font-normal text-gray-900 mt-1">
-                      {viewingClient.customerId ||
-                        "-"}
-                    </p>
-                  </div>
-
-                  {/* COMPANY */}
-
-                  <div>
-                    <p className="text-xs text-gray-500">
-                      Company
-                    </p>
-
-                    <p className="text-sm font-normal text-gray-900 mt-1">
-                      {viewingClient.company ||
-                        "-"}
-                    </p>
-                  </div>
-
-                  {/* ACCOUNT MANAGER */}
-
-                  <div>
-                    <p className="text-xs text-gray-500">
-                      Account Manager
-                    </p>
-
-                    <p className="text-sm font-normal text-gray-900 mt-1">
-                      {viewingClient.accountManager ||
-                        "-"}
-                    </p>
-                  </div>
-
-                  {/* COUNTRY */}
-
-                  <div>
-                    <p className="text-xs text-gray-500">
-                      Country
-                    </p>
-
-                    <p className="text-sm font-normal text-gray-900 mt-1">
-                      {viewingClient.country ||
-                        "-"}
-                    </p>
-                  </div>
-
-                  {/* SELLING RATE */}
-
-                  <div>
-                    <p className="text-xs text-gray-500">
-                      Selling Rate
-                    </p>
-
-                    <p className="text-sm font-normal text-gray-900 mt-1">
-                      {viewingClient.sellingRate ??
-                        "-"}
-                    </p>
-                  </div>
-
-                  {/* PORTS */}
-
-                  <div>
-                    <p className="text-xs text-gray-500">
-                      Ports
-                    </p>
-
-                    <p className="text-sm font-normal text-gray-900 mt-1">
-                      {viewingClient.ports ??
-                        "-"}
-                    </p>
-                  </div>
-
-                  {/* CREDIT */}
-
-                  <div>
-                    <p className="text-xs text-gray-500">
-                      Credit
-                    </p>
-
-                    <p className="text-sm font-normal text-gray-900 mt-1">
-                      {formatCredit(
-                        viewingClient.credit
-                      )}
-                    </p>
-                  </div>
-
-                  {/* ROUTE TYPE */}
-
-                  <div>
-                    <p className="text-xs text-gray-500">
-                      Route Type
-                    </p>
-
-                    <p className="text-sm font-normal text-gray-900 mt-1">
-                      {viewingClient.routeType ||
-                        "-"}
-                    </p>
-                  </div>
-
-                  {/* SUPPORT QUALITY */}
-
-                  <div>
-                    <p className="text-xs text-gray-500">
-                      Support Quality
-                    </p>
-
-                    <p className="text-sm font-normal text-gray-900 mt-1">
-                      {viewingClient.supportQuality ||
-                        "-"}
-                    </p>
-                  </div>
-
-                  {/* STATUS */}
-
-                  <div>
-                    <p className="text-xs text-gray-500">
-                      Status
-                    </p>
-
-                    <p
-                      className={`text-sm font-normal mt-1 ${
-                        String(
-                          viewingClient.status ||
-                            ""
-                        )
-                          .trim()
-                          .toLowerCase() ===
-                        "inactive"
-                          ? "text-red-700"
-                          : "text-gray-900"
-                      }`}
-                    >
-                      {viewingClient.status ||
-                        "-"}
-                    </p>
-                  </div>
-
-                  {/* QUALITY DESCRIPTION */}
-
-                  <div className="col-span-2">
-                    <p className="text-xs text-gray-500">
-                      Quality Description
-                    </p>
-
-                    <p className="text-sm font-normal text-gray-900 mt-1">
-                      {viewingClient.qualityDescription ||
-                        "-"}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex justify-end mt-6 pt-4 border-t border-gray-200">
-                  <button
-                    onClick={() =>
-                      setShowViewClient(
-                        false
-                      )
-                    }
-                    className="h-10 px-5 bg-gray-900 text-white rounded-md text-sm hover:bg-gray-800"
-                  >
-                    Close
-                  </button>
-                </div>
+              <div className="flex justify-end mt-6 pt-4 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setShowViewClient(false)}
+                  className="h-10 px-5 bg-gray-900 text-white rounded-md text-sm hover:bg-gray-800"
+                >
+                  Close
+                </button>
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
     </div>
   );
 }
