@@ -743,6 +743,31 @@ function CustomerDetails() {
               />
 
             </div>
+
+            {/* ==================================================
+                CUSTOMER DESCRIPTION
+                Loaded from companies.company_description
+            ================================================== */}
+
+            <div className="border-t border-gray-100 mt-7 pt-6">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-400 mb-2">
+                Customer Description
+              </p>
+
+              {customer.company_description ? (
+                <div className="bg-gray-50 border border-gray-200 rounded-xl p-5">
+                  <p className="text-sm text-gray-700 leading-7 whitespace-pre-wrap break-words">
+                    {customer.company_description}
+                  </p>
+                </div>
+              ) : (
+                <div className="border border-dashed border-gray-300 rounded-xl p-6 text-center">
+                  <p className="text-sm text-gray-400">
+                    No description available.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         </section>
 

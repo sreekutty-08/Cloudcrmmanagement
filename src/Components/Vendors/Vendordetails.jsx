@@ -190,6 +190,10 @@ function VendorDetails() {
         company_description:
           companyData?.company_description || "",
 
+        // Vendor description is stored in the vendors table.
+        description:
+          vendorData?.description || "",
+
         // ======================================================
         // IMPORTANT
         // IP ADDRESS IS FROM vendors.ip_addresses
@@ -351,7 +355,7 @@ function VendorDetails() {
         vendor.email || "",
 
       description:
-        vendor.company_description || "",
+        vendor.description || "",
 
       vendorStatus:
         vendor.status || "ACTIVE",
@@ -472,9 +476,6 @@ function VendorDetails() {
 
         account_manager:
           editFormData.accountManager.trim(),
-
-        company_description:
-          editFormData.description.trim(),
       };
 
       console.log(
@@ -503,6 +504,9 @@ function VendorDetails() {
 
         status:
           editFormData.vendorStatus,
+
+        description:
+          editFormData.description.trim(),
       };
 
       console.log(
@@ -983,21 +987,21 @@ function VendorDetails() {
             </div>
 
             {/* ==================================================
-                COMPANY DESCRIPTION
+                VENDOR DESCRIPTION
             ================================================== */}
 
             <div className="border-t border-gray-100 mt-7 pt-6">
 
               <p className="text-xs font-medium uppercase tracking-wide text-gray-400 mb-2">
-                Description
+                Vendor Description
               </p>
 
-              {vendor.company_description ? (
+              {vendor.description ? (
 
                 <div className="bg-gray-50 border border-gray-200 rounded-xl p-5">
 
                   <p className="text-sm text-gray-700 leading-7 whitespace-pre-wrap break-words">
-                    {vendor.company_description}
+                    {vendor.description}
                   </p>
 
                 </div>
@@ -1260,7 +1264,7 @@ function VendorDetails() {
                                 <path
                                   strokeLinecap="round"
                                   strokeLinejoin="round"
-                                  d="M9 12h6m-6 4h4m-6-8h6m5 12H7a2 2 0 01-2-2V6a2 2 0 012-2h5.586a1 1 0 01.707.293l3.828 3.828A1 1 0 0117 8.828V18a2 2 0 01-2 2z"
+                                  d="M9 12h6m-6 4h4m-6-8h6m5 12H7a2 2 0 01-2-2V6a2 2 0 012-2h5.586a2 2 0 01.707.293l3.828 3.828A2 2 0 0117 8.828V18a2 2 0 01-2 2z"
                                 />
                               </svg>
 
